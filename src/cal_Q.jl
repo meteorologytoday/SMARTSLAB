@@ -1,54 +1,35 @@
 include("config.jl")
+
 using NetCDF
 
-println("### Constant MLD")
-# constant mixed-layer depth (MLD)
-h_cnst = sum(TOT_F .* dT_dt) / sum(dT_dt .^ 2.0) / (ρ * c_p)
-@printf("The optimal mixed-layer thickness: %.2f m\n", h_cnst)
-
-#=
-println("### Spatial MLD")
-# spatial MLD
-h_spat = (sum(TOT_F .* dT_dt, 3) ./ sum(dT_dt .^ 2.0, 3) / (ρ * c_p))[:,:,1]
-
-
 println("### Temporal Spatial MLD")
-# temporal-spatial MLD
-h_temp_spat = Array{eltype(SST)}(length(rlons), length(rlats), 12)
 
-#for idx in CartesianRange(size(h_temp_spat))
-#for idx in CartesianRange((360, 210, 12))
+# temporal-spatial Q flux
+Qflux_temp_spat = Array{eltype(SST)}(length(rlons), length(rlats), 12)
+
+# Now assume constant h
+h = 32.0
+
 for m = 1:12
     println("Doing month [$m]")
     for i = 1:length(rlons), j = 1:length(rlats)
         #i, j, m = idx
-        h_temp_spat[i, j, m] = sum(TOT_F[i,j,m:12:end] .* dT_dt[i,j,m:12:end]) ./ sum(dT_dt[i,j,m:12:end] .^ 2.0) / (ρ * c_p)
+        Qflux_temp_spat[i, j, m] = sum(h .* dT_dt[i,j,m:12:end] - TOT_F[i,j,m:12:end]) ./ nyrs
     end
 end
 
+Qflux_temp_spat[isnan.(Qflux_temp_spat)] = missing_value
 
 time = collect(Float64, 1:12)
 
-filename = "mixed-layer-depth.nc"
-varname = "h_temp_spat"
+filename = "Q_flux.nc"
+varname = "Q_flux"
 
-h_cnst_attr = Dict(
-    "long_name"=>"Constant Mixed-layer Thickness",
-    "units"=>"m"
-)
-
-h_spat_attr = Dict(
-    "long_name"=>"Mixed-layer Thickness",
-    "units"=>"m",
-    "coordinates"=>"time lat lon"
-)
-
-
-
-h_temp_spat_attr = Dict(
-    "long_name"=>"Monthly Mixed-layer Thickness",
-    "units"=>"m",
-    "coordinates"=>"time lat lon"
+Qflux_temp_spat_attr = Dict(
+    "long_name"=>"Qflux",
+    "units"=>"J / m^2 / s",
+    "coordinates"=>"time lat lon",
+    "missing_value"=>missing_value
 )
 
 
@@ -98,20 +79,11 @@ lat_vertices_attr = Dict(
 
 nccreate(
     filename,
-    "h_spat",
-    "rlon", rlons, rlon_attr,
-    "rlat", rlats, rlat_attr,
-    atts=h_spat_attr,
-    mode=NC_CLASSIC_MODEL
-)
-
-nccreate(
-    filename,
-    "h_temp_spat",
+    "Q_flux",
     "rlon", rlons, rlon_attr,
     "rlat", rlats, rlat_attr,
     "time", time,  time_attr,
-    atts=h_temp_spat_attr,
+    atts=Qflux_temp_spat_attr,
     mode=NC_CLASSIC_MODEL
 )
 
@@ -152,8 +124,7 @@ nccreate(
 )
 
 
-ncwrite(h_temp_spat, filename, "h_temp_spat")
-ncwrite(h_spat, filename, "h_spat")
+ncwrite(Qflux_temp_spat, filename, "Q_flux")
 ncwrite(ncread(fn, "lon"), filename, "lon")
 ncwrite(ncread(fn, "lat"), filename, "lat")
 ncwrite(time, filename, "time")
@@ -168,4 +139,3 @@ ncwrite(ncread(fn, "lat_vertices"), filename, "lat_vertices")
 ncwrite(ncread(fn, "vertices")    , filename, "vertices")
 
 ncclose(filename)
-=#
