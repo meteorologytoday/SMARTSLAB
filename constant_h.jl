@@ -8,8 +8,8 @@ vertices = ncread(fn, "vertices")
 
 
 #TOT_F = ncread(fn, "total_downward_heat_flux")
-TOT_F = ncread(fn, "hfds")[:,:,1:36]
-SST   = ncread(fn, "tos")[:,:,1:36]
+TOT_F = ncread(fn, "hfds")[:,:,:]
+SST   = ncread(fn, "tos")[:,:,:]
 
 
 ρ    = 1027.0  # kg / m^3
@@ -27,32 +27,31 @@ end
 TOT_F = TOT_F[:, :, 13:end-12] 
 dT_dt = (SST[:, :, 14:end-11] - SST[:, :, 12:end-13]) / (2.0 * mon_secs)
 
-#=
+
+println("### Constant MLD")
 # constant mixed-layer depth (MLD)
 h_cnst = sum(TOT_F .* dT_dt) / sum(dT_dt .^ 2.0) / (ρ * c_p)
-@printf("The optimal mixed-layer thickness: %.2f m\n", h)
+@printf("The optimal mixed-layer thickness: %.2f m\n", h_cnst)
 
+
+println("### Spatial MLD")
 # spatial MLD
 h_spat = (sum(TOT_F .* dT_dt, 3) ./ sum(dT_dt .^ 2.0, 3) / (ρ * c_p))[:,:,1]
-println(size(h_spat))
-=#
 
+
+println("### Temporal Spatial MLD")
 # temporal-spatial MLD
 h_temp_spat = Array{eltype(SST)}(length(rlons), length(rlats), 12)
 
 #for idx in CartesianRange(size(h_temp_spat))
 #for idx in CartesianRange((360, 210, 12))
-for i = 1:length(rlons), j = 1:length(rlats), m = 1:12
-    if j == 1
-        println("$i")
+for m = 1:12
+    println("Doing month [$m]")
+    for i = 1:length(rlons), j = 1:length(rlats)
+        #i, j, m = idx
+        h_temp_spat[i, j, m] = sum(TOT_F[i,j,m:12:end] .* dT_dt[i,j,m:12:end]) ./ sum(dT_dt[i,j,m:12:end] .^ 2.0) / (ρ * c_p)
     end
-    #i, j, m = idx
-    h_temp_spat[i, j, m] = sum(TOT_F[i,j,m:12:end] .* dT_dt[i,j,m:12:end]) ./ sum(dT_dt[i,j,m:12:end] .^ 2.0) / (ρ * c_p)
 end
-
-# monthly static
-
-
 
 
 time = collect(Float64, 1:12)
@@ -60,11 +59,18 @@ time = collect(Float64, 1:12)
 filename = "mixed-layer-depth.nc"
 varname = "h_temp_spat"
 
-var_attr = Dict(
+h_cnst_attr = Dict(
+    "long_name"=>"Constant Mixed-layer Thickness",
+    "units"=>"m"
+)
+
+h_spat_attr = Dict(
     "long_name"=>"Mixed-layer Thickness",
     "units"=>"m",
-    "coordinates"=>"lat lon"
+    "coordinates"=>"time lat lon"
 )
+
+
 
 h_temp_spat_attr = Dict(
     "long_name"=>"Monthly Mixed-layer Thickness",
@@ -116,13 +122,23 @@ lat_vertices_attr = Dict(
     "units" => "degrees_north"
 )
 
+
 nccreate(
     filename,
-    varname,
+    "h_spat",
+    "rlon", rlons, rlon_attr,
+    "rlat", rlats, rlat_attr,
+    atts=h_spat_attr,
+    mode=NC_CLASSIC_MODEL
+)
+
+nccreate(
+    filename,
+    "h_temp_spat",
     "rlon", rlons, rlon_attr,
     "rlat", rlats, rlat_attr,
     "time", time,  time_attr,
-    atts=var_attr,
+    atts=h_temp_spat_attr,
     mode=NC_CLASSIC_MODEL
 )
 
@@ -163,7 +179,8 @@ nccreate(
 )
 
 
-ncwrite(h_temp_spat, filename, varname)
+ncwrite(h_temp_spat, filename, "h_temp_spat")
+ncwrite(h_spat, filename, "h_spat")
 ncwrite(ncread(fn, "lon"), filename, "lon")
 ncwrite(ncread(fn, "lat"), filename, "lat")
 ncwrite(time, filename, "time")
@@ -176,7 +193,5 @@ println(size(ncread(fn, "lon_vertices")))
 ncwrite(ncread(fn, "lon_vertices"), filename, "lon_vertices")
 ncwrite(ncread(fn, "lat_vertices"), filename, "lat_vertices")
 ncwrite(ncread(fn, "vertices")    , filename, "vertices")
-
-
 
 ncclose(filename)
