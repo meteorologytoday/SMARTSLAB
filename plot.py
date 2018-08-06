@@ -27,14 +27,16 @@ fig.savefig("h_spat.png", dpi=200)
 
 
 for i in range(12):
+    month = i+1
+
     fig, ax = plt.subplots(1, 1, figsize=(12, 8))
    
-    ax.set_title("h_temp_spat: %02d" % (i+1))
+    ax.set_title("h_temp_spat: %02d" % month)
  
     mappable = ax.contourf(rlons, rlats, h_temp_spat[i], levs, cmap=cmap, extend="both")
     fig.colorbar(mappable, ax=ax, ticks=levs)
     
 
-    fig.savefig("h_temp_spat_%02d.png" % i, dpi=200)
+    fig.savefig("h_temp_spat_%02d.png" % month, dpi=200)
 
 
