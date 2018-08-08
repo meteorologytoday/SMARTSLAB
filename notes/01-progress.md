@@ -8,6 +8,11 @@
 - I said there are flaws in Kraus-Turner MLD derivation, prove it.
 - Francois: Make Q-flux as tunable parameter to see the result.
 
+
+# 2018-08-08
+- Write an NetCDFHelper to create nc file more efficiently in Julia.
+- Realize the work in 08-07 is actually linear fit. The updated note is [here](https://www.sharelatex.com/read/ffhwmpjxwbht)
+
 # 2018-08-07
 
 - Make the [note](https://www.sharelatex.com/read/ywkvvgyzbmfn) of different approaches.
