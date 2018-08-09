@@ -1,140 +1,81 @@
 include("config.jl")
-
+include("NetCDFHelper.jl")
 using NetCDF
 
-println("### Temporal Spatial MLD")
 
-# temporal-spatial Q flux
-Qflux_temp_spat = Array{eltype(SST)}(length(rlons), length(rlats), 12)
 
-# Now assume constant h
-h = 32.0
+# Discard the first and last year
+TOT_F = TOT_F[:, :, 13:end-12] 
+dT_star = (SST[:, :, 14:end-11] - SST[:, :, 12:end-13]) * ρ * c_p
+N = size(TOT_F)[3]/12
+
+
+ϕ = zeros(eltype(TOT_F), N, 2)
+ϕ[:, 2] = 1.0
+
+h = zeros(eltype(ϕ), length(rlons), length(rlats), 12)
+Q = copy(h)
 
 for m = 1:12
     println("Doing month [$m]")
     for i = 1:length(rlons), j = 1:length(rlats)
-        #i, j, m = idx
-        Qflux_temp_spat[i, j, m] = sum(h .* dT_dt[i,j,m:12:end] - TOT_F[i,j,m:12:end]) ./ nyrs
+
+        if isnan(TOT_F[i,j,1])
+            h[i,j,m] = NaN
+            Q[i,j,m] = NaN
+            continue
+        end
+
+        ϕ[:, 1] = TOT_F[i,j,m:12:end]
+        β = ϕ \ dT_star[i,j,m:12:end]
+        
+        h[i,j,m] = β[1]
+        Q[i,j,m] = β[2]
     end
 end
 
-Qflux_temp_spat[isnan.(Qflux_temp_spat)] = missing_value
+# Turn a, b into h, Q
+Q = Q ./ h
+h = 2.0 * dt ./ h
+
+h[isnan.(h)] = missing_value
+Q[isnan.(Q)] = missing_value
+
 time = collect(Float64, 1:12)
 
-filename = "Q_flux.nc"
-varname = "Q_flux"
-
-Qflux_temp_spat_attr = Dict(
-    "long_name"=>"Qflux",
-    "units"=>"J / m^2 / s",
-    "coordinates"=>"time lat lon",
-    "missing_value"=>missing_value
-)
+filename = "hQ.nc"
+NetCDFHelper.specialCopyNCFile(fn, filename, ["lat", "lon", "lat_vertices", "lon_vertices"])
 
 
-rlon_attr = Dict(
-    "long_name"=>"longitude in rotated pole grid",
-    "standard_name"=> "grid_longitude",
-    "units"=>"degrees",
-    "axis"=>"X"
-)
 
-rlat_attr = Dict(
-    "long_name"=>"latitude in rotated pole grid",
-    "standard_name"=> "grid_latitude",
-    "units"=>"degrees",
-    "axis"=>"Y"
-)
-
-time_attr = Dict(
-    "long_name"=>"Month of the year",
-    "units"=>"month"
-)
-
-
-lon_attr  = Dict(
-    "long_name"=>"longitude coordinate",
-    "standard_name"=>"longitude",
-    "units"=>"degrees_east",
-    "bounds"=>"lon_vertices"
-)
-
-lat_attr  = Dict(
-    "long_name"=>"latitude coordinate",
-    "standard_name"=>"latitude",
-    "units"=>"degrees_north",
-    "bounds"=>"lat_vertices"
-)
-
-lon_vertices_attr = Dict(
-    "units" => "degrees_east"
-)
-
-
-lat_vertices_attr = Dict(
-    "units" => "degrees_north"
-)
-
-
+# write h
 nccreate(
     filename,
-    "Q_flux",
-    "rlon", rlons, rlon_attr,
-    "rlat", rlats, rlat_attr,
-    "time", time,  time_attr,
-    atts=Qflux_temp_spat_attr,
-    mode=NC_CLASSIC_MODEL
+    "h",
+    "rlon",
+    "rlat",
+    "time", time,
+    atts= Dict(
+        "long_name"=>"Constant Mixed-layer Thickness",
+        "units"=>"m",
+        "missing_value" => missing_value
+    )
 )
+ncwrite(h, filename, "h")
 
+# write Q
 nccreate(
     filename,
-    "lat",
-    "rlon", rlons, rlon_attr,
-    "rlat", rlats, rlat_attr,
-    atts=lat_attr
+    "Q",
+    "rlon",
+    "rlat",
+    "time", time,
+    atts= Dict(
+        "long_name"=>"Q-flux",
+        "units"=>"J / m^2",
+        "missing_value" => missing_value
+    )
 )
-
-nccreate(
-    filename,
-    "lon",
-    "rlon", rlons, rlon_attr,
-    "rlat", rlats, rlat_attr,
-    atts=lon_attr
-)
-
-
-nccreate(
-    filename,
-    "lon_vertices",
-    "vertices", vertices,
-    "rlon", rlons, rlon_attr,
-    "rlat", rlats, rlat_attr,
-    atts=lon_vertices_attr
-)
-
-
-nccreate(
-    filename,
-    "lat_vertices",
-    "vertices", vertices, 
-    "rlon", rlons, rlon_attr,
-    "rlat", rlats, rlat_attr,
-    atts=lat_vertices_attr
-)
-
-
-ncwrite(Qflux_temp_spat, filename, "Q_flux")
-ncwrite(ncread(fn, "lon"), filename, "lon")
-ncwrite(ncread(fn, "lat"), filename, "lat")
-ncwrite(time, filename, "time")
-
-ncwrite(rlons, filename, "rlon")
-ncwrite(rlats, filename, "rlat")
-
-println(size(ncread(fn, "lon_vertices")))
-
-ncwrite(ncread(fn, "lon_vertices"), filename, "lon_vertices")
-ncwrite(ncread(fn, "lat_vertices"), filename, "lat_vertices")
-ncwrite(ncread(fn, "vertices")    , filename, "vertices")
+ncwrite(Q, filename, "Q")
 
 ncclose(filename)

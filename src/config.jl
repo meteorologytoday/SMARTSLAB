@@ -16,7 +16,7 @@ missing_value = ncgetatt(fn, "tos", "missing_value")
 
 TOT_F[TOT_F .== ncgetatt(fn, "total_downward_heat_flux", "missing_value")] = NaN
 SST[SST .== ncgetatt(fn, "tos", "missing_value")] = NaN
-
+mask = isnan.(SST)
 
 ρ    = 1027.0  # kg / m^3
 c_p  = 3985.0  # J / kg / K
@@ -25,28 +25,12 @@ c_p  = 3985.0  # J / kg / K
 mon_secs = 365.0 / 12.0 * 86400.0
 nmons = length(ncread(fn, "time"))
 
+dt = 1.0 * mon_secs
+
 if nmons % 12 != 0
     error("There are $nmons months, not a multiple of 12")
 end
 
 nyrs = nmons / 12
 
-# Discard the first and last year
-TOT_F = TOT_F[:, :, 13:end-12] 
-dT_dt = (SST[:, :, 14:end-11] - SST[:, :, 12:end-13]) / (2.0 * mon_secs)
 
-
-
-#=
-function writeData(varnames, varattrs)
-
-    for i in 1:length(varnames)
-        varname = varnames[i]
-        varattr = varattrs[i]
-
-        
-
-
-    end
-end
-=#
