@@ -16,7 +16,7 @@ missing_value = ncgetatt(fn, "tos", "missing_value")
 
 TOT_F[TOT_F .== ncgetatt(fn, "total_downward_heat_flux", "missing_value")] = NaN
 SST[SST .== ncgetatt(fn, "tos", "missing_value")] = NaN
-mask = isnan.(SST)
+mask = isnan.(SST[:,:,1])
 
 ρ    = 1027.0  # kg / m^3
 c_p  = 3985.0  # J / kg / K
