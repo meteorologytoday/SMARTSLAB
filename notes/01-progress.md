@@ -9,6 +9,10 @@
 - Francois: Make Q-flux as tunable parameter to see the result.
 
 
+# 2018-08-09
+- Did fitting h and Q at the same time. However the result is not good because it seems Q flux is negative generally in boreal summer. This is counter intuitive. What is even weird is that if we assum constant h and fit Q, Q flux will be as expected!
+
+
 # 2018-08-08
 - Write an NetCDFHelper to create nc file more efficiently in Julia.
 - Realize the work in 08-07 is actually linear fit. The updated note is [here](https://www.sharelatex.com/read/ffhwmpjxwbht)

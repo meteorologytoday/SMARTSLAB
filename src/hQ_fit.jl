@@ -13,30 +13,30 @@ N = size(TOT_F)[3]/12
 ϕ = zeros(eltype(TOT_F), N, 2)
 ϕ[:, 2] = 1.0
 
-h = zeros(eltype(ϕ), length(rlons), length(rlats), 12)
-Q = copy(h)
+a = zeros(eltype(ϕ), length(rlons), length(rlats), 12)
+b = copy(a)
 
 for m = 1:12
     println("Doing month [$m]")
     for i = 1:length(rlons), j = 1:length(rlats)
 
         if isnan(TOT_F[i,j,1])
-            h[i,j,m] = NaN
-            Q[i,j,m] = NaN
+            a[i,j,m] = NaN
+            b[i,j,m] = NaN
             continue
         end
 
         ϕ[:, 1] = TOT_F[i,j,m:12:end]
         β = ϕ \ dT_star[i,j,m:12:end]
         
-        h[i,j,m] = β[1]
-        Q[i,j,m] = β[2]
+        a[i,j,m] = β[1]
+        b[i,j,m] = β[2]
     end
 end
 
 # Turn a, b into h, Q
-Q = Q ./ h
-h = 2.0 * dt ./ h
+Q = b ./ a
+h = 2.0 * dt ./ a
 
 h[isnan.(h)] = missing_value
 Q[isnan.(Q)] = missing_value
@@ -45,8 +45,6 @@ time = collect(Float64, 1:12)
 
 filename = "hQ.nc"
 NetCDFHelper.specialCopyNCFile(fn, filename, ["lat", "lon", "lat_vertices", "lon_vertices"])
-
-
 
 # write h
 nccreate(

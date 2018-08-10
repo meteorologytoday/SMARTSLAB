@@ -2,6 +2,11 @@ include("config.jl")
 
 using NetCDF
 
+# Discard the first and last year
+TOT_F = TOT_F[:, :, 13:end-12] 
+dT_dt = (SST[:, :, 14:end-11] - SST[:, :, 12:end-13]) / (2.0 * mon_secs)
+
+
 println("### Temporal Spatial MLD")
 
 # temporal-spatial Q flux
