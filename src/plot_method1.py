@@ -2,8 +2,15 @@ import matplotlib.pyplot as plt
 import netCDF4 as nc4
 import numpy as np
 
+import sys
 
-fh = nc4.Dataset("hQ_method_1.nc", "r")
+print("The first argument is %s" % (sys.argv[1],))
+method = int(sys.argv[1])
+
+filename = "hQ_method_%d.nc" % method
+print("Going to read %s" % filename)
+
+fh = nc4.Dataset(filename, "r")
 
 rlats      = fh.variables['rlat'][:]
 rlons      = fh.variables['rlon'][:]
@@ -48,6 +55,6 @@ for i in range(12):
     fig.colorbar(mappable_3, ax=ax[1,1], ticks=levs_Q_std)
     
 
-    fig.savefig("img/hQ_method_1_%02d.png" % month, dpi=200)
+    fig.savefig("img/hQ_method_%d_month_%02d.png" % (method, month), dpi=200)
     print("done.")
 

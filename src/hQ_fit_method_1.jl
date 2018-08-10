@@ -10,13 +10,13 @@ using NetCDF
 # Discard the first and last year
 TOT_F = TOT_F[:, :, 13:end-12] 
 dT_star = (SST[:, :, 14:end-11] - SST[:, :, 12:end-13]) * ρ * c_p
-N = size(TOT_F)[3]/12
 
 
-ϕ = zeros(eltype(TOT_F), N, 2)
-ϕ[:, 2] = 1.0
+#N = size(TOT_F)[3]/12
+#ϕ = zeros(eltype(TOT_F), N, 2)
+#ϕ[:, 2] = 1.0
 
-h = zeros(eltype(ϕ), length(rlons), length(rlats), 12)
+h = zeros(eltype(TOT_F), length(rlons), length(rlats), 12)
 Q = copy(h)
 
 h_std = copy(h)
@@ -66,31 +66,31 @@ Q_std[mask] = missing_value
 
 time = collect(Float64, 1:12)
 
-filename = "hQ_method_1_GLM.nc"
+filename = "hQ_method_1.nc"
 NetCDFHelper.specialCopyNCFile(fn, filename, ["lat", "lon", "lat_vertices", "lon_vertices"])
 
 
 for obj in [
     [
-        h, "h_GLM", Dict(
+        h, "h", Dict(
             "long_name"=>"Constant Mixed-layer Thickness",
             "units"=>"m",
             "missing_value" => missing_value
         )
     ], [
-        Q, "Q_GLM", Dict(
+        Q, "Q", Dict(
             "long_name"=>"Q-flux",
             "units"=>"J / m^2",
             "missing_value" => missing_value
         )
     ], [
-        h_std, "h_std_GLM", Dict(
+        h_std, "h_std", Dict(
             "long_name"=>"Constant Mixed-layer Thickness Standard Deviation",
             "units"=>"m",
             "missing_value" => missing_value
         )
     ], [
-        Q_std, "Q_std_GLM", Dict(
+        Q_std, "Q_std", Dict(
             "long_name"=>"Q-flux Standard Deviation",
             "units"=>"J / m^2",
             "missing_value" => missing_value
