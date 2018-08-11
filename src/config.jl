@@ -1,6 +1,6 @@
 using NetCDF
 
-fn = "/surtsey/tienyiah/GFDL_ESM2G_QFlux/SMART_Omon_GFDL-ESM2G_historical_r1i1p1_186101-189112.nc"
+fn = "/export/home/tienyiah/data/SMART_Omon_GFDL-ESM2G_historical_r1i1p1_186101-189112.nc"
 
 
 rlons    = ncread(fn, "rlon")

@@ -9,6 +9,10 @@
 - Francois: Make Q-flux as tunable parameter to see the result.
 
 
+# 2018-08-10
+- Making plots of 2 methods fitting h and Q. Should clarify these two methods in notes.
+- Try to move to green planet. Some package in Julia rely majorly on python. So it is better to setup python first then install julia.
+
 # 2018-08-09
 - Did fitting h and Q at the same time. However the result is not good because it seems Q flux is negative generally in boreal summer. This is counter intuitive. What is even weird is that if we assum constant h and fit Q, Q flux will be as expected!
 
