@@ -1,11 +1,10 @@
 using NetCDF
 
-fn = "/export/home/tienyiah/data/SMART_Omon_GFDL-ESM2G_historical_r1i1p1_186101-189112.nc"
+fn = "/home/tienyiah/projects/SMART/data/SMART_Omon_GFDL-ESM2G_historical_r1i1p1_186101-200112.nc"
 
 
 rlons    = ncread(fn, "rlon")
 rlats    = ncread(fn, "rlat")
-vertices = ncread(fn, "vertices")
 
 
 TOT_F = ncread(fn, "total_downward_heat_flux")
@@ -32,5 +31,6 @@ if nmons % 12 != 0
 end
 
 nyrs = nmons / 12
+@printf("We have %02d years of data.\n", nyrs)
 
 

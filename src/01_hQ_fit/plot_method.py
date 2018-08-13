@@ -16,11 +16,23 @@ rlats      = fh.variables['rlat'][:]
 rlons      = fh.variables['rlon'][:]
 
 
-levs_h     = np.arange(-200, 210, 40)
-levs_h_std = np.arange(0, 210, 40)
+if method == 1:
 
-levs_Q     = np.arange(-200, 210, 40)
-levs_Q_std = np.arange(0, 210, 40)
+    levs_h     = np.arange(-200, 210, 40)
+    levs_h_std = np.arange(0, 210, 40)
+
+    levs_Q     = np.arange(-200, 210, 20)
+    levs_Q_std = np.arange(0, 210, 20)
+
+elif method == 2:
+
+    levs_h     = np.arange(-50, 55, 10) * 2
+    levs_h_std = np.arange(0, 55, 10) * 2
+
+    levs_Q     = np.arange(-50, 55, 10) 
+    levs_Q_std = np.arange(0, 55, 10) /2
+
+
 
 cmap_h     = plt.get_cmap("RdBu")
 cmap_h_std = plt.get_cmap("hot_r")
@@ -56,5 +68,6 @@ for i in range(12):
     
 
     fig.savefig("img/hQ_method_%d_month_%02d.png" % (method, month), dpi=200)
+    fig.savefig("img/hQ_method_%d_month_%02d.eps" % (method, month), dpi=200)
     print("done.")
 

@@ -20,8 +20,8 @@ Q = copy(h)
 h_std = copy(h)
 Q_std = copy(h)
 
-println(typeof(TOT_F))
-println(typeof(dT_star_dt))
+#println(typeof(TOT_F))
+#println(typeof(dT_star_dt))
 
 for m = 1:12
     println("Doing month [$m]")
