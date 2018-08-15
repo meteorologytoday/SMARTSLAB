@@ -28,6 +28,11 @@ if method == 1:
     levs["Q"]     = np.arange(-200, 210, 20)
     levs["Q_std"] = np.arange(0, 210, 20)
 
+    r_cmap  = plt.get_cmap("RdBu_r")
+    r_levs  = np.arange(-50, 55, 10)
+    r2_levs = np.arange(-200, 210, 20)
+
+
 elif method == 2:
 
     levs["h"]     = np.arange(-50, 55, 10) * 2
@@ -35,6 +40,11 @@ elif method == 2:
 
     levs["Q"]     = np.arange(-50, 55, 10) 
     levs["Q_std"] = np.arange(0, 55, 10) /2
+
+    r_cmap  = plt.get_cmap("RdBu_r")
+    r_levs  = np.arange(-50, 55, 10)
+    r2_levs = np.arange(-20, 21, 2) / 10
+
 
 elif method == 3:
 
@@ -44,10 +54,14 @@ elif method == 3:
     levs["Q"]     = np.arange(-5000, 5500, 500) 
     levs["Q_std"] = np.arange(0, 5000, 250)
 
+    r_cmap  = plt.get_cmap("RdBu_r")
+    r_levs  = np.arange(-50, 55, 10)
+    r2_levs = np.arange(-1000, 1100, 200)
 
 
 
-levs["TOT_F"]     = np.arange(-100, 151, 30) 
+
+levs["TOT_F"]     = np.arange(-150, 151, 30) 
 levs["TOT_F_std"] = np.arange(0, 151, 15)
 
 levs["dT_star_dt"]     = np.arange(-5, 5.5, .5) 
@@ -65,10 +79,6 @@ cmap["TOT_F_std"] = plt.get_cmap("jet")
 cmap["dT_star_dt"]     = plt.get_cmap("RdBu_r")
 cmap["dT_star_dt_std"] = plt.get_cmap("jet")
 
-
-r_cmap  = plt.get_cmap("RdBu_r")
-r_levs  = np.arange(-50, 55, 10)
-r2_levs = np.arange(-1000, 1100, 200)
 
 
 

@@ -27,6 +27,8 @@ beg_t   = Int(13)            # Jan of second year
 v     = zeros(eltype(T_star), length(rlons), length(rlats), 24)
 v_std = copy(v)
 
+dh_dt = zeros(eltype(T_star), length(rlons), length(rlats), 12)
+
 dt2 = 2.0 * dt
 @inline mod12(n) = mod(n-1, 12) + 1
 for i = 1:length(rlons), j = 1:length(rlats)
@@ -45,8 +47,6 @@ for i = 1:length(rlons), j = 1:length(rlats)
     for t = 1:N
 
         # ϕ_h
-        #@printf("t = %d, center: %d\n", t, beg_t + t - 1)
-        #@printf("%d, %d\n", t, t_mod_12 + 1)
         ϕ[t, mod12(t+1)] =   T_star[i, j, (beg_t + t - 1) + 1] / dt2
         ϕ[t, mod12(t-1)] = - T_star[i, j, (beg_t + t - 1) - 1] / dt2
 
@@ -72,10 +72,28 @@ for i = 1:length(rlons), j = 1:length(rlats)
         
 end
 
+# Derive dh_dt
+for i = 1:length(rlons), j = 1:length(rlats)
+    if mask[i,j]
+        dh_dt[i,j,:] = NaN
+        continue
+    end
+
+    for t = 1:12
+        dh_dt[i, j, t] = (v[i, j, mod12(t+1)] - v[i, j, mod12(t-1)]) / dt2
+    end
+end
+
+
+
+
+
 mask = isnan.(v)
 
 v[mask] = missing_value
 v_std[mask] = missing_value
+
+dh_dt[isnan.(dh_dt)] = missing_value
 
 time = collect(Float64, 1:12)
 
@@ -87,7 +105,7 @@ NetCDFHelper.specialCopyNCFile(fn, filename, ["lat", "lon", "lat_vertices", "lon
 for obj in [
     [
         v[:, :,  1:12], "h", Dict(
-            "long_name"=>"Constant Mixed-layer Thickness",
+            "long_name"=>"Mixed-layer Thickness",
             "units"=>"m",
             "missing_value" => missing_value
         )
@@ -99,7 +117,7 @@ for obj in [
         )
     ], [
         v_std[:, :,  1:12], "h_std", Dict(
-            "long_name"=>"Constant Mixed-layer Thickness Standard Deviation",
+            "long_name"=>"Mixed-layer Thickness Standard Deviation",
             "units"=>"m",
             "missing_value" => missing_value
         )
@@ -107,6 +125,12 @@ for obj in [
         v_std[:, :, 13:24], "Q_std", Dict(
             "long_name"=>"Q-flux Standard Deviation",
             "units"=>"W / m^2",
+            "missing_value" => missing_value
+        )
+    ], [
+        dh_dt, "dh_dt", Dict(
+            "long_name" => "Mixed-layer Thickness Changing Ratei",
+            "units"=>"m / s",
             "missing_value" => missing_value
         )
     ]
