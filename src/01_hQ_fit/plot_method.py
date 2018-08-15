@@ -7,67 +7,134 @@ import sys
 print("The first argument is %s" % (sys.argv[1],))
 method = int(sys.argv[1])
 
-filename = "./data/hQ_method_%d.nc" % method
-print("Going to read %s" % filename)
+filename_hQ = "./data/hQ_fit_method_%d.jl.nc" % method
+filename_TF = "./data/dT_star_dt-TOT_F.nc"
 
-fh = nc4.Dataset(filename, "r")
+print("Going to read %s and %s" % (filename_hQ, filename_TF))
 
-rlats      = fh.variables['rlat'][:]
-rlons      = fh.variables['rlon'][:]
+fh_hQ = nc4.Dataset(filename_hQ, "r")
+fh_TF = nc4.Dataset(filename_TF, "r")
 
+rlats      = fh_hQ.variables['rlat'][:]
+rlons      = fh_TF.variables['rlon'][:]
 
+levs = {}
+cmap = {}
 if method == 1:
 
-    levs_h     = np.arange(-200, 210, 40)
-    levs_h_std = np.arange(0, 210, 40)
+    levs["h"]     = np.arange(-200, 210, 40)
+    levs["h_std"] = np.arange(0, 210, 40)
 
-    levs_Q     = np.arange(-200, 210, 20)
-    levs_Q_std = np.arange(0, 210, 20)
+    levs["Q"]     = np.arange(-200, 210, 20)
+    levs["Q_std"] = np.arange(0, 210, 20)
 
 elif method == 2:
 
-    levs_h     = np.arange(-50, 55, 10) * 2
-    levs_h_std = np.arange(0, 55, 10) * 2
+    levs["h"]     = np.arange(-50, 55, 10) * 2
+    levs["h_std"] = np.arange(0, 55, 10) * 2
 
-    levs_Q     = np.arange(-50, 55, 10) 
-    levs_Q_std = np.arange(0, 55, 10) /2
+    levs["Q"]     = np.arange(-50, 55, 10) 
+    levs["Q_std"] = np.arange(0, 55, 10) /2
+
+elif method == 3:
+
+    levs["h"]     = np.arange(-50, 55, 10) * 2
+    levs["h_std"] = np.arange(0, 55, 5) * 2
+
+    levs["Q"]     = np.arange(-5000, 5500, 500) 
+    levs["Q_std"] = np.arange(0, 5000, 250)
 
 
 
-cmap_h     = plt.get_cmap("RdBu")
-cmap_h_std = plt.get_cmap("hot_r")
-cmap_Q     = plt.get_cmap("RdBu")
-cmap_Q_std = plt.get_cmap("hot_r")
+
+levs["TOT_F"]     = np.arange(-100, 151, 30) 
+levs["TOT_F_std"] = np.arange(0, 151, 15)
+
+levs["dT_star_dt"]     = np.arange(-5, 5.5, .5) 
+levs["dT_star_dt_std"] = np.arange(0,  2.1, .2)
+
+cmap["h"]     = plt.get_cmap("RdBu")
+cmap["h_std"] = plt.get_cmap("jet")
+
+cmap["Q"]     = plt.get_cmap("RdBu_r")
+cmap["Q_std"] = plt.get_cmap("jet")
+
+cmap["TOT_F"]     = plt.get_cmap("RdBu_r")
+cmap["TOT_F_std"] = plt.get_cmap("jet")
+
+cmap["dT_star_dt"]     = plt.get_cmap("RdBu_r")
+cmap["dT_star_dt_std"] = plt.get_cmap("jet")
 
 
-fig, ax = plt.subplots(2, 2, figsize=(12, 8))
+r_cmap  = plt.get_cmap("RdBu_r")
+r_levs  = np.arange(-50, 55, 10)
+r2_levs = np.arange(-1000, 1100, 200)
+
+
+
+
+
 for i in range(12):
     month = i+1
     
     print("Plotting month %02d... " % month, end="")
 
 
-    fig, ax = plt.subplots(2, 2, figsize=(12, 8))
+    fig, ax = plt.subplots(2, 5, figsize=(30, 12))
+    fig.subplots_adjust(**{
+        'left' : 0.05,
+        'right': 0.95
+    })
 
-    ax[0][0].set_title("h best fit")
-    ax[0][1].set_title("h std")
-    ax[1][0].set_title("Q best fit")
-    ax[1][1].set_title("Q std")
-  
-    fig.suptitle("Month : %02d" % month)
+
+    fig.suptitle("Month : %02d (%s)" % (month, ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i]), size=30)
+
+    ind = (i, slice(None), slice(None))
+
+    for j, (varname, unit, fh) in enumerate([
+        ("dT_star_dt", r"$\mathrm{W} / \mathrm{m}^3$", fh_TF),
+        ("h",          r"$\mathrm{m}$",                fh_hQ),
+        ("Q",          r"$\mathrm{W} / \mathrm{m}^2$", fh_hQ),
+        ("TOT_F",      r"$\mathrm{W} / \mathrm{m}^2$", fh_TF),
+    ]):
+
+        ax[0, j].set_title("%s [%s]" % (varname, unit))
+        ax[1, j].set_title("%s std [%s]" % (varname, unit))
  
-    mappable_0 = ax[0][0].contourf(rlons, rlats, fh.variables["h"][i,:,:], levs_h, cmap=cmap_h, extend="both")
-    mappable_1 = ax[0][1].contourf(rlons, rlats, fh.variables["h_std"][i,:,:], levs_h_std, cmap=cmap_h_std, extend="max")
-    mappable_2 = ax[1][0].contourf(rlons, rlats, fh.variables["Q"][i,:,:], levs_Q, cmap=cmap_Q, extend="both")
-    mappable_3 = ax[1][1].contourf(rlons, rlats, fh.variables["Q_std"][i,:,:], levs_Q_std, cmap=cmap_Q_std, extend="max")
+        varname_std = varname + "_std"
 
-    fig.colorbar(mappable_0, ax=ax[0,0], ticks=levs_h)
-    fig.colorbar(mappable_1, ax=ax[0,1], ticks=levs_h_std)
-    fig.colorbar(mappable_2, ax=ax[1,0], ticks=levs_Q)
-    fig.colorbar(mappable_3, ax=ax[1,1], ticks=levs_Q_std)
-    
+        mappable_0 = ax[0, j].contourf(rlons, rlats, fh.variables[varname][ind],     levs[varname],     cmap=cmap[varname]    , extend="both")
+        mappable_1 = ax[1, j].contourf(rlons, rlats, fh.variables[varname_std][ind], levs[varname_std], cmap=cmap[varname_std], extend="max")
+
+        fig.colorbar(mappable_0, ax=ax[0, j], ticks=levs[varname])
+        fig.colorbar(mappable_1, ax=ax[1, j], ticks=levs[varname_std])
+
+
+
+    dh_dt = (fh_hQ.variables["h"][(i+1) % 12, :, :] - fh_hQ.variables["h"][(i-1) % 12, :, :]) / (2 * 365.0 * 86400.0 / 12.0)
+
+    # Residue including dh_dt
+    residue = fh_hQ.variables["h"][ind] * fh_TF.variables["dT_star_dt"][ind] \
+            + dh_dt                     * fh_TF.variables["T_star"][ind]   \
+            - fh_TF.variables["TOT_F"][ind] - fh_hQ.variables["Q"][ind]
+
+    ax[0, 4].set_title(r"Residue [$\mathrm{W} / \mathrm{m}^2$]" + "\ndT_star_dt * h + dh_dt * T_star - Q - TOT_F")
+    mappable = ax[0, 4].contourf(rlons, rlats, residue, r_levs, cmap=r_cmap, extend="both")
+    fig.colorbar(mappable, ax=ax[0, 4], ticks=r_levs)
+
+    # Residue including dh_dt
+    residue = fh_hQ.variables["h"][ind] * fh_TF.variables["dT_star_dt"][ind] \
+            - fh_TF.variables["TOT_F"][ind] - fh_hQ.variables["Q"][ind]
+
+    ax[1, 4].set_title(r"Residue [$\mathrm{W} / \mathrm{m}^2$]" + "\ndT_star_dt * h - Q - TOT_F")
+    mappable = ax[1, 4].contourf(rlons, rlats, residue, r2_levs, cmap=r_cmap, extend="both")
+    fig.colorbar(mappable, ax=ax[1, 4], ticks=r2_levs)
+
+   
 
     fig.savefig("img/hQ_method_%d_month_%02d.png" % (method, month), dpi=200)
-    fig.savefig("img/hQ_method_%d_month_%02d.eps" % (method, month), dpi=200)
+    #fig.savefig("img/hQ_method_%d_month_%02d.eps" % (method, month), dpi=200)
     print("done.")
+
+    plt.close(fig)
 
