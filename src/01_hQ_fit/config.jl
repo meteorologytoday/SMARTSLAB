@@ -1,5 +1,21 @@
 using NetCDF
 
+@printf("Running %s\n", basename(@__FILE__))
+
+function prtArr(A)
+    for i = 1:size(A)[1]
+        for j = 1:size(A)[2]
+
+            @printf("%d ", A[i,j]) 
+
+        end
+        @printf("\n")
+    end
+end
+
+ρ    = 1027.0  # kg / m^3
+c_p  = 3985.0  # J / kg / K
+
 fn = "/home/tienyiah/projects/SMART/data/SMART_Omon_GFDL-ESM2G_historical_r1i1p1_186101-200112.nc"
 
 
@@ -17,9 +33,7 @@ TOT_F[TOT_F .== ncgetatt(fn, "total_downward_heat_flux", "missing_value")] = NaN
 SST[SST .== ncgetatt(fn, "tos", "missing_value")] = NaN
 mask = isnan.(SST[:,:,1])
 
-ρ    = 1027.0  # kg / m^3
-c_p  = 3985.0  # J / kg / K
-
+T_star = SST * ρ * c_p
 
 mon_secs = 365.0 / 12.0 * 86400.0
 nmons = length(ncread(fn, "time"))
@@ -32,5 +46,3 @@ end
 
 nyrs = nmons / 12
 @printf("We have %02d years of data.\n", nyrs)
-
-

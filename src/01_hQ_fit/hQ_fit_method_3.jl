@@ -1,22 +1,8 @@
 include("config.jl")
 include("NetCDFHelper.jl")
 
-function prtArr(A)
-    for i = 1:size(A)[1]
-        for j = 1:size(A)[2]
-
-            @printf("%d ", A[i,j]) 
-
-        end
-        @printf("\n")
-    end
-end
-
-
-
 using NetCDF
 
-T_star = SST * ρ * c_p
 
 N       = Int((nyrs-2) * 12) # Discard the first and last year
 beg_t   = Int(13)            # Jan of second year
