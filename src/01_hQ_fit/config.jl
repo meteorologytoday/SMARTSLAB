@@ -26,12 +26,15 @@ rlats    = ncread(fn, "rlat")
 TOT_F = ncread(fn, "total_downward_heat_flux")
 #TOT_F = ncread(fn, "hfds")[:,:,:]
 SST   = ncread(fn, "tos")[:,:,:]
+tp = eltype(TOT_F)
 
 missing_value = ncgetatt(fn, "tos", "missing_value")
 
 TOT_F[TOT_F .== ncgetatt(fn, "total_downward_heat_flux", "missing_value")] = NaN
 SST[SST .== ncgetatt(fn, "tos", "missing_value")] = NaN
-mask = isnan.(SST[:,:,1])
+
+spatial_mask = isnan.(SST[:,:,1])
+spatial_temporal_mask = isnan.(SST)
 
 T_star = SST * ρ * c_p
 

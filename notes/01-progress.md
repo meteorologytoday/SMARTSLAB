@@ -1,13 +1,14 @@
 
 # TO-DO list
 
-- Fitting appropriate h by minimizing Q:
-  - Need the residual map.
-  - The meaning of h < 0
 - I said total_downward_heat_flux is not the same as i thought, prove it.
 - I said there are flaws in Kraus-Turner MLD derivation, prove it.
-- Francois: Make Q-flux as tunable parameter to see the result.
+- Francois: What is the difference between T_{i+1} - T_{i-1} vs T_{i+1} - T_{i}
+- Do the simulation using the fitted result.
 
+
+# 2018-08-16
+- Make latex note to include all the methods now i am using.
 
 # 2018-08-14
 - Make graph of new equation including dh_dt. Still need to write the latex note down.

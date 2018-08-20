@@ -10,8 +10,8 @@ beg_t   = Int(13)            # Jan of second year
 ϕ = Base.SparseArrays.spzeros(eltype(T_star), N, 12 * 2)   # for h and Q
 ϕ = zeros(eltype(T_star), N, 12 * 2)   # for h and Q
 
-v     = zeros(eltype(T_star), length(rlons), length(rlats), 24)
-v_std = copy(v)
+β     = zeros(eltype(T_star), length(rlons), length(rlats), 24)
+β_std = copy(β)
 
 dh_dt = zeros(eltype(T_star), length(rlons), length(rlats), 12)
 
@@ -23,11 +23,10 @@ for i = 1:length(rlons), j = 1:length(rlats)
         @printf("Doing lon[%d]: %.1f\n", i, rlons[i])
     end
     
-    if mask[i,j]
-        v[i,j,:] = NaN
+    if spatial_mask[i,j]
+        β[i,j,:] = NaN
         continue
     end
-
     ϕ[:,:] = 0.0
 
     for t = 1:N
@@ -47,26 +46,26 @@ for i = 1:length(rlons), j = 1:length(rlats)
     F =  TOT_F[i, j, beg_t:(beg_t + N - 1)]
 
     # Solve normal equation
-    # ϕ v = F => v = ϕ \ F
-    v[i, j, :] = ϕ \ F
+    # ϕ β = F => β = ϕ \ F
+    β[i, j, :] = ϕ \ F
     # Estimate standard deviation
-    ϵ = F - ϕ * v[i, j, :]
+    ϵ = F - ϕ * β[i, j, :]
     var = inv(ϕ'*ϕ) * (ϵ' * ϵ) / (1 + N)
     for k = 1:24
-        v_std[i, j, k] = sqrt(var[k, k])
+        β_std[i, j, k] = sqrt(var[k, k])
     end
         
 end
 
 # Derive dh_dt
 for i = 1:length(rlons), j = 1:length(rlats)
-    if mask[i,j]
+    if spatial_mask[i,j]
         dh_dt[i,j,:] = NaN
         continue
     end
 
     for t = 1:12
-        dh_dt[i, j, t] = (v[i, j, mod12(t+1)] - v[i, j, mod12(t-1)]) / dt2
+        dh_dt[i, j, t] = (β[i, j, mod12(t+1)] - β[i, j, mod12(t-1)]) / dt2
     end
 end
 
@@ -74,10 +73,10 @@ end
 
 
 
-mask = isnan.(v)
+mask = isnan.(β)
 
-v[mask] = missing_value
-v_std[mask] = missing_value
+β[mask] = missing_value
+β_std[mask] = missing_value
 
 dh_dt[isnan.(dh_dt)] = missing_value
 
@@ -90,25 +89,25 @@ NetCDFHelper.specialCopyNCFile(fn, filename, ["lat", "lon", "lat_vertices", "lon
 
 for obj in [
     [
-        v[:, :,  1:12], "h", Dict(
+        β[:, :,  1:12], "h", Dict(
             "long_name"=>"Mixed-layer Thickness",
             "units"=>"m",
             "missing_value" => missing_value
         )
     ], [
-        v[:, :, 13:24], "Q", Dict(
+        β[:, :, 13:24], "Q", Dict(
             "long_name"=>"Q-flux",
             "units"=>"W / m^2",
             "missing_value" => missing_value
         )
     ], [
-        v_std[:, :,  1:12], "h_std", Dict(
+        β_std[:, :,  1:12], "h_std", Dict(
             "long_name"=>"Mixed-layer Thickness Standard Deviation",
             "units"=>"m",
             "missing_value" => missing_value
         )
     ], [
-        v_std[:, :, 13:24], "Q_std", Dict(
+        β_std[:, :, 13:24], "Q_std", Dict(
             "long_name"=>"Q-flux Standard Deviation",
             "units"=>"W / m^2",
             "missing_value" => missing_value
