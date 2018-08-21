@@ -20,18 +20,20 @@ rlons      = fh['h'].variables['rlon'][:]
 levs = {}
 cmap = {}
 
-levs["h"]     = np.arange(-200, 210, 40)
+levs["h"]     = np.arange(-100, 110, 10)
 levs["h_std"] = np.arange(0, 210, 40)
-levs["Q"]     = np.arange(-500, 500, 50) 
+levs["Q"]     = np.arange(-100, 100, 10) 
 levs["Q_std"] = np.arange(0, 2000, 250)
+levs["TOT_F"]     = np.arange(-100, 100, 10) 
 
-cmap["h"]     = plt.get_cmap("RdBu")
+cmap["h"]     = plt.get_cmap("RdBu_r")
 cmap["h_std"] = plt.get_cmap("jet")
 cmap["Q"]     = plt.get_cmap("RdBu_r")
 cmap["Q_std"] = plt.get_cmap("jet")
+cmap["TOT_F"] = plt.get_cmap("RdBu_r")
 
 
-fig, ax = plt.subplots(2, 3, figsize=(18, 12))
+fig, ax = plt.subplots(2, 4, figsize=(24, 12))
 fig.subplots_adjust(**{
     'left' : 0.05,
     'right': 0.95
@@ -59,14 +61,21 @@ fig.colorbar(mappable_1, ax=ax[1, 1], ticks=levs['h_std'])
 fig.colorbar(mappable_2, ax=ax[0, 2], ticks=levs['Q'])
 fig.colorbar(mappable_3, ax=ax[1, 2], ticks=levs['Q_std'])
 
+# TOT_F
+mappable_0 = ax[0, 3].contourf(rlons, rlats, np.mean(fh['TF'].variables['TOT_F'][:,:,:], axis=0), levs['TOT_F'], cmap=cmap['TOT_F'], extend="both")
+fig.colorbar(mappable_0, ax=ax[0, 3], ticks=levs['TOT_F'])
+
+ax[1, 3].axis('off')
+
 # titles
 
-ax[0, 0].set_title(r"$h = h(\lambda, \phi), Q = 0$")
+ax[0, 0].set_title(r"$h = h(\lambda, \phi)$ [$\mathrm{m}$], $Q = 0$")
 ax[1, 0].set_title(r"$\sigma_h$")
-ax[0, 1].set_title(r"$h = h(\lambda, \phi)$")
+ax[0, 1].set_title(r"$h = h(\lambda, \phi)$ [$\mathrm{m}$]")
 ax[1, 1].set_title(r"$\sigma_h$")
-ax[0, 2].set_title(r"$Q = Q(\lambda, \phi)$")
+ax[0, 2].set_title(r"$Q = Q(\lambda, \phi)$ [$\mathrm{W} / \mathrm{m}^2$]")
 ax[1, 2].set_title(r"$\sigma_Q$")
+ax[0, 3].set_title(r"$F_{tot} = F_{tot}(\lambda, \phi)$ [$\mathrm{W} / \mathrm{m}^2$]")
 
 
 

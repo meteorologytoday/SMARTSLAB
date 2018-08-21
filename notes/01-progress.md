@@ -8,7 +8,7 @@
 
 # 2018-08-20
 - Try to transplant the code onto GreenPlanet but still failed. Keep trying.
-- Done for the case 1 and 2. For h and Q exist with constant spatial structure, there is unreasonable large uncertainty. For h only with constant spatial strueture, the uncertainty only exists near high latitude coastal regions but h can be negative in a lot of places which is not reasonable.
+- Done for the case 1 and 2 and their plottings. For h and Q exist with constant spatial structure, there is unreasonable large uncertainty. For h only with constant spatial strueture, the uncertainty only exists near high latitude coastal regions but h can be negative in a lot of places which is not reasonable.
 
 
 # 2018-08-16
