@@ -39,6 +39,7 @@ for i = 1:length(rlons), j = 1:length(rlats)
     
     if spatial_mask[i,j]
         β[i, j, :] = NaN
+        β_std[i, j, :] = NaN
         continue
     end
 
@@ -56,13 +57,14 @@ for i = 1:length(rlons), j = 1:length(rlats)
         var = inv(ϕ'*ϕ) * (ϵ' * ϵ) / (1 + N)
     catch e
         #println("Exception happened")
-        if isa(e, Base.LinAlg.SingularException)
+        #if isa(e, Base.LinAlg.SingularException)
             #println("Singular detected")
             β_std[i, j, :] = singular_matrix_value
             continue
-        else
-            throw(e)
-        end
+        #else
+        #    println(e)
+        #    throw(e)
+        #end
     end
 
     #=
@@ -86,6 +88,7 @@ end
 println("done.")
 
 β[isnan.(β)] = missing_value
+β_std[isnan.(β_std)] = missing_value
 
 filename = @sprintf("data/%s.nc", basename(@__FILE__))
 NetCDFHelper.specialCopyNCFile(fn, filename, ["lat", "lon", "lat_vertices", "lon_vertices"])
@@ -98,14 +101,29 @@ for obj in [
             "missing_value" => missing_value
         )
     ], [
-        β[:,:,2], "h_std", Dict(
+        β_std[:,:,1], "h_std", Dict(
             "long_name"=>"Mixed-layer Thickness Standard Deviation",
             "units"=>"m",
             "missing_value" => missing_value,
             "assumption_break_value" => assumption_break_value,
             "singular_matrix_value" => singular_matrix_value
         )
+    ], [
+        β[:,:,2], "Q", Dict(
+            "long_name"=>"Q-flux",
+            "units"=>"W / m^2",
+            "missing_value" => missing_value
+        )
+    ], [
+        β_std[:,:,2], "Q_std", Dict(
+            "long_name"=>"Q-flux standard deviation",
+            "units"=>"W / m^2",
+            "missing_value" => missing_value,
+            "assumption_break_value" => assumption_break_value,
+            "singular_matrix_value" => singular_matrix_value
+        )
     ]
+
 
 ]
     var     = obj[1]
