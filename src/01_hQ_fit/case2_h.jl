@@ -65,20 +65,7 @@ for i = 1:length(rlons), j = 1:length(rlats)
         #    throw(e)
         #end
     end
-
-    #=
-    print("ϕ' * ϕ: ")
-    println(ϕ' * ϕ)
-    print("Inv(ϕ' * ϕ): ")
-    println(inv(ϕ'*ϕ))
-    print("SUM: ")
-    println(sum(ϕ[:,1] .^ 2.0))
-    print("ϵ' * ϵ: ")
-    println(ϵ' * ϵ)
-    print("var: ")
-    println(var)
-    =#
-
+    
     for k = 1:1
         β_std[i, j, k] = var[k, k] < 0 ? assumption_break_value : sqrt(var[k, k])
     end
