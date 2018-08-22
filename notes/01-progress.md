@@ -6,6 +6,12 @@
 - Francois: What is the difference between T_{i+1} - T_{i-1} vs T_{i+1} - T_{i}
 - Do the simulation using the fitted result.
 
+
+# 2018-08-21
+- Transplant to GreenPlanet successfully. Use conda as package manager works fine.
+- Complete the simulation for a single point. Need to plot result for different places with RK4/euler scheme.
+
+
 # 2018-08-20
 - Try to transplant the code onto GreenPlanet but still failed. Keep trying.
 - Done for the case 1 and 2 and their plottings. For h and Q exist with constant spatial structure, there is unreasonable large uncertainty. For h only with constant spatial strueture, the uncertainty only exists near high latitude coastal regions but h can be negative in a lot of places which is not reasonable.

@@ -66,7 +66,8 @@ using CSV
 
 
 df = DataFrame()
-df[:SST] = T
+df[:SST_simulated] = T
+df[:SST_real]      = SST[rlon_i, rlat_i, :]
 
 filename = @sprintf("%s_SST.csv", basename(@__FILE__))
 filename = joinpath(data_path, filename)

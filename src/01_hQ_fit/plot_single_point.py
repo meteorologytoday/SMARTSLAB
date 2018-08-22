@@ -4,21 +4,15 @@ import netCDF4 as nc4
 
 import sys
 
-print("The first argument is %s" % (sys.argv[1],))
-method = int(sys.argv[1])
-
-print("The second argument is %s" % (sys.argv[2],))
-print("The third argument is %s" % (sys.argv[3],))
-lat = float(sys.argv[2])
-lon = float(sys.argv[3])
+rlat = float(sys.argv[1])
+rlon = float(sys.argv[2])
 
 place_name = None
-if len(sys.argv) >= 5:
-    place_name = sys.argv[4]
-    print("The fourth argument is %s" % (sys.argv[4],))
+if len(sys.argv) >= 4:
+    place_name = sys.argv[3]
 
 
-filename_hQ = "./data/hQ_fit_method_%d.jl.nc" % method
+filename_hQ = "./data/case3_hQ.jl.nc"
 filename_TF = "./data/dT_star_dt-TOT_F.nc"
 
 print("Going to read %s and %s" % (filename_hQ, filename_TF))
@@ -28,34 +22,39 @@ fh_hQ = nc4.Dataset(filename_hQ, "r")
 fh_TF = nc4.Dataset(filename_TF, "r")
 
 rlats      = fh_hQ.variables['rlat'][:]
-rlons      = fh_TF.variables['rlon'][:]
-times      = fh_TF.variables['time'][:]
+rlons      = fh_hQ.variables['rlon'][:]
+times      = fh_hQ.variables['time'][:]
 
-lat_i = None
+lats      = fh_hQ.variables['lat'][:, :]
+lons      = fh_hQ.variables['lon'][:, :]
+
+rlat_i = None
 for i in range(len(rlats)-1):
-    if rlats[i] <= lat and lat <= rlats[i+1]:
-        lat_i = i if (lat - rlats[i]) < (rlats[i+1] - lat) else i+1
+    if rlats[i] <= rlat and rlat <= rlats[i+1]:
+        rlat_i = i if (rlat - rlats[i]) < (rlats[i+1] - rlat) else i+1
         break
 
-if lat_i is None:
+if rlat_i is None:
     raise Exception("Cannot find suitable latitude index!")
 
-lon_i = None
+rlon_i = None
 for i in range(len(rlons)-1):
-    if rlons[i] <= lon and lon <= rlons[i+1]:
-        lon_i = i if (lon - rlons[i]) < (rlons[i+1] - lon) else i+1
+    if rlons[i] <= rlon and rlon <= rlons[i+1]:
+        rlon_i = i if (rlon - rlons[i]) < (rlons[i+1] - rlon) else i+1
         break
 
-if lon_i is None:
+if rlon_i is None:
     raise Exception("Cannot find suitable longitude index!")
 
 
 
-lat = rlats[lat_i]
-lon = rlons[lon_i]
-ind = (slice(None), lat_i, lon_i)
+rlat = rlats[rlat_i]
+rlon = rlons[rlon_i]
+lat  = lats[rlat_i, rlon_i]
+lon  = lons[rlat_i, rlon_i]
+ind = (slice(None), rlat_i, rlon_i)
 
-print("The nearest grid point to where you pick is lat=%.1f, lon=%.1f" % (lat, lon))
+print("The nearest grid point to where you pick is rlat=%.2f, rlon=%.2f at grid point(%d, %d). Real lat=%.2f, lon=%.2f" % (rlat, rlon, rlat_i, rlon_i, lat, lon))
 
 fig, (ax, ax2, ax3) = plt.subplots(3,1,figsize=(12,8))
 
@@ -84,7 +83,5 @@ ax.legend(loc="lower left")
 ax2.legend(loc="lower left")
 ax3.legend(loc="lower left")
 
-plt.show()
-
-
+fig.savefig("./img/SinglePoint_[%.2f][%.2f].png" % (lat, lon) , dpi=200)
 

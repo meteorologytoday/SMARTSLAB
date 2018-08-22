@@ -90,7 +90,8 @@ function simulate_single_point(
 
         #@printf("[Step %04d] %.2f, %.2f, %.2f, %.2f\n", i, k1, k2, k3, k4)
 
-        T_star[i+1] = T_star[i] + (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
+        #T_star[i+1] = T_star[i] + (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
+        T_star[i+1] = T_star[i] + k1
     end 
 
     return T_star
