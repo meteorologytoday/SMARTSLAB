@@ -6,6 +6,8 @@ using PyPlot
 using DataFrames
 using CSV
 
+function Draw()
+
 df = CSV.read(joinpath(data_path, "simulate.jl_SST.csv"))
 
 fig, ax = plt[:subplots](3, 1, sharex=true, figsize=(20, 10))
@@ -41,9 +43,10 @@ ax[3][:plot](t, - df[:SST_EULER] ./ df[:h] .* df[:dhdt] .* (ρ*c_p), color="b", 
 ax[3][:legend]()
 
 
-#plot(df[:SST_simulated], color="r", linewidth=2.0, linestyle="-")
-
-
-plt[:show]()
-
 fig[:savefig]("")
+
+
+
+end
+
+

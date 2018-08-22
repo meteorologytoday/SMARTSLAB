@@ -17,6 +17,7 @@ mon_secs = 365.0 / 12.0 * 86400.0
 dt  = 1.0 * mon_secs
 
 data_path = joinpath(dirname(@__FILE__), "..", "..", "data")
+img_path = joinpath(dirname(@__FILE__), "..", "..", "img")
 fn = joinpath(data_path, "SMART_Omon_GFDL-ESM2G_historical_r1i1p1_186101-200112.nc")
 
 

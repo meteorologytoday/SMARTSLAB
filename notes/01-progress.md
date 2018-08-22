@@ -2,10 +2,11 @@
 # TO-DO list
 
 - I said total_downward_heat_flux is not the same as i thought, prove it.
-- I said there are flaws in Kraus-Turner MLD derivation, prove it.
 - Francois: What is the difference between T_{i+1} - T_{i-1} vs T_{i+1} - T_{i}
-- Do the simulation using the fitted result.
 
+# 2018-08-22
+- Complete plotting simulation for single points.
+- Need to wrap up the notes.
 
 # 2018-08-21
 - Transplant to GreenPlanet successfully. Use conda as package manager works fine.
