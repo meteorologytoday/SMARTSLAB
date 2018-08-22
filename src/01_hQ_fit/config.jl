@@ -16,7 +16,8 @@ end
 ρ    = 1027.0  # kg / m^3
 c_p  = 3985.0  # J / kg / K
 
-fn = "/home/tienyiah/projects/SMART/data/SMART_Omon_GFDL-ESM2G_historical_r1i1p1_186101-200112.nc"
+data_path = joinpath(dirname(@__FILE__), "..", "..", "data")
+fn = joinpath(data_path, "SMART_Omon_GFDL-ESM2G_historical_r1i1p1_186101-200112.nc")
 
 
 rlons    = ncread(fn, "rlon")
