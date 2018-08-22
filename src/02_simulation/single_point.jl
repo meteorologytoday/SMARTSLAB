@@ -7,7 +7,7 @@ function f(
     dhdt :: G
 ) where G <: AbstractFloat
 
-    @printf("T_star: %.2f, F: %.2f, Q: %.2f, h: %.2f, dhdt: %.2e\n", T_star, F, Q, h, dhdt)
+    #@printf("T_star: %.2f, F: %.2f, Q: %.2f, h: %.2f, dhdt: %.2e\n", T_star, F, Q, h, dhdt)
 
     return ((F + Q) - T_star * dhdt) / h
 
@@ -35,7 +35,6 @@ function simulate_single_point(
     dhdt    :: Array{G, 1},
     Q       :: Array{G, 1},
     F       :: Array{G, 1},
-    h_min   :: G,
     ret_len :: Int
 ) where G <: AbstractFloat
 
@@ -47,8 +46,6 @@ function simulate_single_point(
     F    = extend(F,    ret_len)
     h    = extend(h,    ret_len)
     dhdt = extend(dhdt, ret_len)
-
-    println(dhdt)
 
     for i=1:ret_len-1
 
@@ -91,7 +88,7 @@ function simulate_single_point(
             dhdt[i+1]
         )
 
-        @printf("[Step %04d] %.2f, %.2f, %.2f, %.2f\n", i, k1, k2, k3, k4)
+        #@printf("[Step %04d] %.2f, %.2f, %.2f, %.2f\n", i, k1, k2, k3, k4)
 
         T_star[i+1] = T_star[i] + (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
     end 

@@ -1,4 +1,4 @@
-include("config.jl")
+include("config_and_data.jl")
 include("single_point.jl")
 
 @printf("Running %s\n", basename(@__FILE__))
@@ -32,6 +32,11 @@ init_T_star  = T_star[rlon_i, rlat_i, 1]
 ret_len = length(F)
 h_min   = 10.0
 
+# detect h_min
+for i = 1:length(h)
+    h[i] = h[i] < h_min ? h_min : h[i]
+end
+
 # construct dhdt
 dhdt    = copy(h)
 dhdt[2:end-1] = h[3:end] - h[1:end-2]
@@ -42,6 +47,7 @@ dhdt /= dt * 2
 @printf("init_T_star  : %.2f\n", init_T_star)
 @printf("ret_len : %d\n", ret_len)
 
+@printf("Doing simulation... \n")
 T = simulate_single_point(
         init_T_star,
         dt,
@@ -49,14 +55,22 @@ T = simulate_single_point(
         dhdt,
         Q,
         F,
-        h_min,
         ret_len
 ) / ρ / c_p
 
+@printf("done.\n")
 
-using PyPlot
+using DataFrames
+using CSV
 
-plot(T, color="k", linewidth=2.0, linestyle="--")
-title(L"Simulated SST at")
 
+
+df = DataFrame()
+df[:SST] = T
+
+filename = @sprintf("%s_SST.csv", basename(@__FILE__))
+filename = joinpath(data_path, filename)
+
+@printf("Gonna print data to %s\n", filename)
+CSV.write(filename, df)
 
