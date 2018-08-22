@@ -22,9 +22,9 @@ cmap = {}
 
 levs["h"]     = np.arange(-100, 110, 10)
 levs["h_std"] = np.arange(0, 210, 40)
-levs["Q"]     = np.arange(-100, 100, 10) 
+levs["Q"]     = np.arange(-100, 110, 10) 
 levs["Q_std"] = np.arange(0, 2000, 250)
-levs["TOT_F"]     = np.arange(-100, 100, 10) 
+levs["TOT_F"]     = np.arange(-100, 110, 10) 
 
 cmap["h"]     = plt.get_cmap("RdBu_r")
 cmap["h_std"] = plt.get_cmap("jet")
@@ -33,7 +33,7 @@ cmap["Q_std"] = plt.get_cmap("jet")
 cmap["TOT_F"] = plt.get_cmap("RdBu_r")
 
 
-fig, ax = plt.subplots(2, 4, figsize=(24, 12))
+fig, ax = plt.subplots(2, 4, figsize=(24, 8))
 fig.subplots_adjust(**{
     'left' : 0.05,
     'right': 0.95
@@ -77,10 +77,5 @@ ax[0, 2].set_title(r"$Q = Q(\lambda, \phi)$ [$\mathrm{W} / \mathrm{m}^2$]")
 ax[1, 2].set_title(r"$\sigma_Q$")
 ax[0, 3].set_title(r"$F_{tot} = F_{tot}(\lambda, \phi)$ [$\mathrm{W} / \mathrm{m}^2$]")
 
-
-
-
-
-fig.savefig("img/case_2.png", dpi=200)
-plt.show()
+fig.savefig("img/case2_h_hQ.png", dpi=200)
 

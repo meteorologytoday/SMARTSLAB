@@ -31,16 +31,19 @@ end
 function simulate_single_point(
     init_T_star  :: G,
     dt      :: G,
+    F       :: Array{G, 1},
+    Q       :: Array{G, 1},
     h       :: Array{G, 1},
     dhdt    :: Array{G, 1},
-    Q       :: Array{G, 1},
-    F       :: Array{G, 1},
     ret_len :: Int
 ) where G <: AbstractFloat
 
 
-    T_star = zeros(G, ret_len)
-    T_star[1] = init_T_star
+    T_star_RK4   = zeros(G, ret_len)
+    T_star_EULER = zeros(G, ret_len)
+
+    T_star_RK4[1] = init_T_star
+    T_star_EULER[1] = init_T_star
 
     Q    = extend(Q,    ret_len)
     F    = extend(F,    ret_len)
@@ -57,7 +60,7 @@ function simulate_single_point(
         =#
 
         k1 = dt * f(
-            T_star[i],
+            T_star_RK4[i],
             F[i],
             Q[i],
             h[i],
@@ -65,7 +68,7 @@ function simulate_single_point(
         )
 
         k2 = dt * f(
-            T_star[i] + k1 / 2.0,
+            T_star_RK4[i] + k1 / 2.0,
             (F[i]    + F[i+1])/2.0,
             (Q[i]    + Q[i+1])/2.0,
             (h[i]    + h[i+1])/2.0,
@@ -73,7 +76,7 @@ function simulate_single_point(
         )
 
         k3 = dt * f(
-            T_star[i] + k2 / 2.0,
+            T_star_RK4[i] + k2 / 2.0,
             (F[i]    + F[i+1])/2.0,
             (Q[i]    + Q[i+1])/2.0,
             (h[i]    + h[i+1])/2.0,
@@ -81,7 +84,7 @@ function simulate_single_point(
         )
 
         k4 = dt * f(
-            T_star[i] + k3,
+            T_star_RK4[i] + k3,
             F[i+1],
             Q[i+1],
             h[i+1],
@@ -90,11 +93,11 @@ function simulate_single_point(
 
         #@printf("[Step %04d] %.2f, %.2f, %.2f, %.2f\n", i, k1, k2, k3, k4)
 
-        #T_star[i+1] = T_star[i] + (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
-        T_star[i+1] = T_star[i] + k1
+        T_star_RK4[i+1]   = T_star_RK4[i]   + (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
+        T_star_EULER[i+1] = T_star_EULER[i] + dt * f(T_star_EULER[i], F[i], Q[i], h[i], dhdt[i])
     end 
 
-    return T_star
+    return T_star_RK4, T_star_EULER, F, Q, h, dhdt
 end
 
 #=
