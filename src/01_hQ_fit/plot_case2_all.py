@@ -77,5 +77,5 @@ ax[0, 2].set_title(r"$Q = Q(\lambda, \phi)$ [$\mathrm{W} / \mathrm{m}^2$]")
 ax[1, 2].set_title(r"$\sigma_Q$")
 ax[0, 3].set_title(r"$F_{tot} = F_{tot}(\lambda, \phi)$ [$\mathrm{W} / \mathrm{m}^2$]")
 
-fig.savefig("img/case2_h_hQ.png", dpi=200)
+fig.savefig("img/case2_all.png", dpi=200)
 
