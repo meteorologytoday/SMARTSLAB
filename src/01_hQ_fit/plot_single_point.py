@@ -4,8 +4,12 @@ import netCDF4 as nc4
 
 import sys
 
+"""
 rlat = float(sys.argv[1])
 rlon = float(sys.argv[2])
+"""
+rlat_i = int(sys.argv[1])
+rlon_i = int(sys.argv[2])
 
 place_name = None
 if len(sys.argv) >= 4:
@@ -17,7 +21,6 @@ filename_TF = "./data/dT_star_dt-TOT_F.nc"
 
 print("Going to read %s and %s" % (filename_hQ, filename_TF))
 
-
 fh_hQ = nc4.Dataset(filename_hQ, "r")
 fh_TF = nc4.Dataset(filename_TF, "r")
 
@@ -27,7 +30,7 @@ times      = fh_hQ.variables['time'][:]
 
 lats      = fh_hQ.variables['lat'][:, :]
 lons      = fh_hQ.variables['lon'][:, :]
-
+"""
 rlat_i = None
 for i in range(len(rlats)-1):
     if rlats[i] <= rlat and rlat <= rlats[i+1]:
@@ -42,7 +45,7 @@ for i in range(len(rlons)-1):
     if rlons[i] <= rlon and rlon <= rlons[i+1]:
         rlon_i = i if (rlon - rlons[i]) < (rlons[i+1] - rlon) else i+1
         break
-
+"""
 if rlon_i is None:
     raise Exception("Cannot find suitable longitude index!")
 
@@ -85,3 +88,7 @@ ax3.legend(loc="lower left")
 
 fig.savefig("./img/SinglePoint_[%.2f][%.2f].png" % (lat, lon) , dpi=200)
 
+print(fh_hQ.variables["Q"][ind])
+print(fh_hQ.variables["dh_dt"][ind])
+print(fh_hQ.variables["h"][ind])
+print(fh_TF.variables["T_star"][ind])

@@ -1,8 +1,18 @@
 
 # TO-DO list
 
+- Test EC-earth and NCAR-CESM model
+- Use Kraus-Turner parameterization to see the result
+
+
 - I said total_downward_heat_flux is not the same as i thought, prove it.
 - Francois: What is the difference between T_{i+1} - T_{i-1} vs T_{i+1} - T_{i}
+
+
+# 2018-08-29
+- Pull out the number to see why places with sea-ice does not do well in simulation. It seems that modifying h so that h = 10m if it gets thinner or negative causes the problem.
+
+
 
 # 2018-08-22
 - Complete plotting simulation for single points.

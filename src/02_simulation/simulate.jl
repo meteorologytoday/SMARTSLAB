@@ -68,20 +68,49 @@ T_RK4, T_EULER, used_F, used_Q, used_h, used_dhdt = simulate_single_point(
 T_RK4   /= ρ * c_p
 T_EULER /= ρ * c_p
 
+DEBUG_T_EULER_DIF = T_RK4 * 0.0
+DEBUG_T_EULER_DIF[1:end-1] = T_EULER[2:end] - T_EULER[1:end-1]
+
+DEBUG_T_RK4_DIF = T_RK4 * 0.0
+DEBUG_T_RK4_DIF[1:end-1] = T_RK4[2:end] - T_RK4[1:end-1]
+
+
 
 @printf("done.\n")
 
 @printf("Making Plots...\n")
 
 dat = Dict(
-    :SST_RK4   => T_RK4,
-    :SST_EULER => T_EULER,
-    :SST_REAL  => SST[rlon_i, rlat_i, 1:ret_len],
-    :F         => used_F,
-    :Q         => used_Q,
-    :h         => used_h,
-    :dhdt      => used_dhdt
+    :SST_RK4           => T_RK4,
+    :SST_EULER         => T_EULER,
+    :SST_REAL          => SST[rlon_i, rlat_i, 1:ret_len],
+    :F                 => used_F,
+    :Q                 => used_Q,
+    :h                 => used_h,
+    :dhdt              => used_dhdt,
+    Symbol("-dhdt/h")  => - used_dhdt ./ used_h,
+    Symbol("(F+Q)/h")  => (used_F .+ used_Q) ./ used_h,
+    Symbol("-dhdt/h * SST_EULER * ρ * c_p")  => - used_dhdt ./ used_h .* T_EULER .* (ρ * c_p),
+    Symbol("TOTAL / ρ / c_p")  => ( used_F .+ used_Q - T_EULER .* (ρ * c_p) .* used_dhdt) ./ used_h / (ρ * c_p),
+    Symbol("TOTAL / ρ / c_p * dt")  => ( used_F .+ used_Q - T_EULER .* (ρ * c_p) .* used_dhdt) ./ used_h * dt / (ρ * c_p),
+    Symbol("DEBUG_T_EULER_DIF")  => DEBUG_T_EULER_DIF, 
+    Symbol("DEBUG_T_RK4_DIF")  => DEBUG_T_RK4_DIF 
 )
+
+
+# Print CSV file
+using DataFrames
+using CSV
+
+df = DataFrame(dat)
+
+filename = @sprintf("%s-[%.2f][%.2f].csv", basename(@__FILE__), real_lat, real_lon)
+filename = joinpath(data_path, filename)
+
+@printf("Gonna print data to %s\n", filename)
+CSV.write(filename, df)
+
+
 
 
 
