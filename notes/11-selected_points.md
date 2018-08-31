@@ -1,7 +1,6 @@
 # Selected points
 
-| Name                                  | Lat     | Lon     | (rlat_index, rlon_index)    | Description   | rlat      | rlon      |
-|                                       |         |         |  1-based                    |               |           |           |
+| Name                                  | Lat     | Lon     | (rlat_index, rlon_index)<br>(1-based)    | Description   | rlat      | rlon      |
 |---------------------------------------|---------|---------|-----------------------------|---------------|-----------|-----------|
 | SouthernOcean_Seaice_1                | -73.21  | -164.50 |    7, 155                   |               | -73.21    | -164.50   |
 | SouthernOcean_Seaice_2                | -72.09  |  -39.50 |    9, 240                   |               | -72.09    |  -39.50   |
