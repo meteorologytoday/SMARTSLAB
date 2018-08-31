@@ -22,12 +22,17 @@ function f(
     dhdt = 1.0 / Q * (2.0 / β - h) * dSdt
 
     if dhdt <= 0 # h can be diagnosed
+        println("Shallowing")
         dTsdt = 0.5 * Q^2.0 / Γ
         diag_h = 2.0 * Γ / Q
     else
+        println("Deepening")
         dTsdt = 2.0 / h^2.0 * (Q * h - Γ)
         dhdt  = 1.0 / (Ts - Td) / h * (2.0 * Γ - Q * h)
     end
+
+    @printf("dh/dt: %f, dTs/dt: %f, Γ: %f, \n", dhdt, dTsdt, Γ)
+
 
 
     return diag_h, dhdt, dTsdt
