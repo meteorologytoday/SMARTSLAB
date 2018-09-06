@@ -7,7 +7,7 @@
 # Notes on different Models
 
 ## GFDL-ESM2G
-
+ - Mixed-Layer calculation: `parameterizations/vertical/GOLD_mixed_layer.F90`. It uses the Kraus-Turner-like bulk mixed layer based on the work [Simulation of the Atlantic Circulation with a Coupled Sea Ice-Mixed Layer-Isopycnal General Circulation Model. Part I: Model Description](https://journals.ametsoc.org/doi/abs/10.1175/1520-0485(1993)023%3C0808:SOTACW%3E2.0.CO;2)
  - Grid points: search `NXTOT` and `NYTOT`.
 
 
