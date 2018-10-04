@@ -25,23 +25,32 @@ N       = Int((nyrs-2) * 12) # Discard the first and last year
 beg_t   = Int(13)            # Jan of second year
 
 output_h  = zeros(dtype, length(rlons), length(rlats), 12)
-output_Qf = copy(h)
+output_Q = copy(h)
 output_Td_star = 273.0 * ρ * c_p
 
 dt2 = 2.0 * dt
+
+# Gradient Descent method parameters
+iter_max = 1000000
+#update_bounds = [0.16, 0.16]
+ϵ_converge_ratio_threshold = 5e-3
+converge_count_target = 10
+ϵ_mem = Inf
+η = 10.0
+
 @inline mod12(n) = mod(n-1, 12) + 1
 
-# Assign h and Qf initial condition
+# Assign h and Q initial condition
 output_h *= 0.0
 output_h += 30.0
 
 # In the length of N
 h = zeros(dtype, N)
-Qf = copy(h)
+Q = copy(h)
 ∂h∂t = copy(h)
 
 
-#
+# Construct delta function
 I12 = zeros(dtype, 12, 12) + I
 δ    = repeat(I12, outer=(1, nyrs-2))
 ∂δ∂t = repeat(
@@ -60,100 +69,56 @@ for i = 1:length(rlons), j = 1:length(rlats)
 
    
     h[1:12]  = output_h[i, j]
-    Qf[1:12] = output_Qf[i, j]
+    Q[1:12] = output_Q[i, j]
 
     S_term  = S[i, j, beg_t : beg_t + (N-1)]
     B_term  = B[i, j, beg_t : beg_t + (N-1)]
     ΔT_star = T_star[i, j] .- Td_star
+
+    # Gradient Descent Init
+    converge_count = 0
+
     # For each iteration
     for k = 1 : iter_max
 
         repeat_fill!(h,    h[1:12])
-        repeat_fill!(Qf,   Qf[1:12])
+        repeat_fill!(Q,   Q[1:12])
         repeat_fill!(∂h∂t, (h[14:25] - h[12:23]) / dt2)  # Assume the length is long enough
 
         Λ = convert(Array{dtype}, ∂h∂t .> 0.0)
         
-        # Calculate ϵ
-        ϵ =  h .* ∂T_star∂t + ΔT_star .* ∂h∂t .* Λ .- S_term .- B_term .- Qf
-        ϵ2 = ϵ' * ϵ
+        # Calculate ϵ and ϵ^2
+        ϵ =  h .* ∂T_star∂t + ΔT_star .* ∂h∂t .* Λ .- S_term .- B_term .- Q
+        ϵ2_sum = ϵ' * ϵ
+
+        # Determine if iteration should stop or not
+        Δϵ_ratio = (ϵ2_sum^0.5 - ϵ_mem) / ϵ_mem
+
+
+        if Δϵ_ratio < 0.0 && abs(Δϵ) < ϵ_converge_ratio_threshold  # if it is converging
+            converge_count +=1
+        else # if it is diverging
+            converge_count = 0
+        end
+
+        if converge_count >= converge_count_threshold
+            output_h[i, j, :] = h[:]
+            output_Q[i, j, :] = Q[:]
+            break
+        end
        
-        # Calculate ∂Post∂h, ∂Post∂Qf
+        # Calculate ∂Post∂h, ∂Post∂Q
         # Assume flat prior for now
-        ∂Post∂h  = - δ * (ϵ .* ∂T_star∂t) + ∂δ∂t * (Λ .* (ΔT_star))
-        ∂Post∂Qf = δ * ϵ
+        ∂Post∂h  = - (δ * (ϵ .* ∂T_star∂t) + ∂δ∂t * (Λ .* ΔT_star))
+        ∂Post∂Q = δ * ϵ
 
+        # Update h and Q
+        h += ∂Post∂h .* η
+        Q += ∂Post∂Q .* η 
 
-        # Update h and Qf
-        
-        # Calculate ϵ^2
-
-        # Test if ϵ^2 decreases and converges
-        # If it does then do the next grid point
     end
         
 end
-
-# Derive dh_dt
-for i = 1:length(rlons), j = 1:length(rlats)
-    if spatial_mask[i,j]
-        dh_dt[i,j,:] = NaN
-        continue
-    end
-
-    for t = 1:12
-        dh_dt[i, j, t] = (β[i, j, mod12(t+1)] - β[i, j, mod12(t-1)]) / dt2
-    end
-end
-
-
-
-
-
-function Λ(x)
-    return (x >= 0) ? 1.0 : 0.0
-end
-
-
-
-
-
-   
-        
-
-
-function cal_ϵ(h, Ts,)
-    global dt2
-    
-
-end
-
-function cal_∂P∂h()
-
-end
-
-function cal_∂P∂Qf()
-end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
