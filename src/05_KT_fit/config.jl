@@ -1,5 +1,5 @@
 using NetCDF
-
+using Printf
 @printf("Running %s\n", basename(@__FILE__))
 
 ρ    = 1027.0  # kg / m^3
@@ -18,24 +18,27 @@ for varname in ["omlmax", "S", "B", "tos"]
 
 end
 
-rlons    = ncread(fn, "rlon")
-rlats    = ncread(fn, "rlat")
+rlons    = ncread(fn["omlmax"], "rlon")
+rlats    = ncread(fn["omlmax"], "rlat")
 
-SST   = ncread(fn, "tos")[:,:,:]
-tp = eltype(TOT_F)
+SST   = ncread(fn["tos"], "tos")[:,:,:]
+S   = ncread(fn["S"], "S")[:,:,:]
+B   = ncread(fn["B"], "B")[:,:,:]
 
-missing_value = ncgetatt(fn, "tos", "missing_value")
+dtype = eltype(SST)
 
-TOT_F[TOT_F .== ncgetatt(fn, "total_downward_heat_flux", "missing_value")] = NaN
-SST[SST .== ncgetatt(fn, "tos", "missing_value")] = NaN
+missing_value = ncgetatt(fn["tos"], "tos", "missing_value")
+missing_places = (S .== ncgetatt(fn["S"], "S", "missing_value"))
 
-spatial_mask = isnan.(SST[:,:,1])
-spatial_temporal_mask = isnan.(SST)
+
+#SST[missing_places] = NaN
+S[missing_places] .= NaN
+B[missing_places] .= NaN
 
 T_star = SST * ρ * c_p
 
 mon_secs = 365.0 / 12.0 * 86400.0
-nmons = length(ncread(fn, "time"))
+nmons = length(ncread(fn["tos"], "time"))
 
 dt = 1.0 * mon_secs
 
@@ -43,8 +46,7 @@ if nmons % 12 != 0
     error("There are $nmons months, not a multiple of 12")
 end
 
-nyrs = nmons / 12
+nyrs = Int(nmons / 12)
 @printf("We have %02d years of data.\n", nyrs)
 
 
-dtype = eltype(T_star)
