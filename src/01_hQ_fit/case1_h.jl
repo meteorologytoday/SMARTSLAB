@@ -13,12 +13,12 @@ end
 
 
 # Discard the first and last year
-#TOT_F = TOT_F[:, :, 13:end-12] 
-#dT_star_dt = (T_star[:, :, 14:end-11] - T_star[:, :, 12:end-13]) / (2.0 * mon_secs)
+TOT_F = TOT_F[:, :, 13:end-12] 
+dT_star_dt = (T_star[:, :, 14:end-11] - T_star[:, :, 12:end-13]) / (2.0 * mon_secs)
 
-nyrs = 8
-TOT_F = TOT_F[:, :, 13:13+nyrs*12-1] 
-dT_star_dt = (T_star[:, :, 14:13+nyrs*12] - T_star[:, :, 12:13+nyrs*12-2]) / (2.0 * mon_secs)
+#nyrs = 8
+#TOT_F = TOT_F[:, :, 13:13+nyrs*12-1] 
+#dT_star_dt = (T_star[:, :, 14:13+nyrs*12] - T_star[:, :, 12:13+nyrs*12-2]) / (2.0 * mon_secs)
 
 
 

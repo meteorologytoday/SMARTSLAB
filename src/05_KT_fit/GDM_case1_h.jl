@@ -1,6 +1,6 @@
 include("config.jl")
 include("NetCDFHelper.jl")
-
+include("BacktrackingLineSearchStruct.jl")
 using NetCDF
 using LinearAlgebra
 
@@ -8,21 +8,13 @@ N       = Int((nyrs-2) * 12) # Discard the first and last year
 beg_t   = Int(13)            # Jan of second year
 
 
-
-output_converge = 0
-
 dt2 = 2.0 * dt
 
 # Gradient Descent method parameters
-iter_max = 1000
-#update_bounds = [0.16, 0.16]
-ϵ_converge_ratio_threshold = 1e-11
-converge_count_threshold = 10
-ϵ_mem = Inf
-η = 1e-8
+iter_max = 100
 
-println(beg_t+1)
-println(beg_t+N - 1)
+BLSS = BacktrackingLineSearchStruct(iter_max, 0.1, 0.8, 10.0, 1e-3)
+
 
 # Assign h and Q initial condition
 h = 100.0
@@ -41,47 +33,61 @@ println(size(S))
 
 println(sum(isnan.(S)))
 
-converge_count = 0
+
+function getϵandϵ2(h, ∂θ∂t, S, B)
+    ϵ  = h * ∂θ∂t - S - B
+    ϵ2 = sum(ϵ.^2.0)/length(∂θ∂t)
+    return ϵ, ϵ2
+end
+
 # For each iteration
 for k = 1 : iter_max
-    global h, ∂θ∂t, ϵ_mem, converge_count
-    # Calculate ϵ and ϵ^2
-    ϵ =  h * ∂θ∂t - S - B
-    ϵ2_sum = sum(ϵ.^2.0)
-    ϵ_now = (ϵ2_sum / N)^0.5
+    global h, ∂θ∂t
 
-    #@printf("Determine convergence condition.\n")
-    # Determine if iteration should stop or not
-    Δϵ_ratio = (ϵ_now - ϵ_mem) / ϵ_mem
+    if_update = false
 
-    @printf("Iter: %d. h: %.2f, ϵ_now: %f; Δϵ_ratio * 100: %f\n", k, h, ϵ_now, Δϵ_ratio * 100.0)
+    ϵ, ϵ2 = getϵandϵ2(h, ∂θ∂t, S, B)
 
-    #@printf("Converging?\n")
-    if Δϵ_ratio < 0.0 && abs(Δϵ_ratio) < ϵ_converge_ratio_threshold  # if it is converging
-        converge_count +=1
-    else # if it is diverging
-        converge_count = 0
-    end
+    ∂ϵ∂h       = ∂θ∂t
+    ∂ϵ2∂h      = sum(ϵ .* ∂ϵ∂h) / length(ϵ)
+    ∂ϵ2∂h_unit = ∂ϵ2∂h / sum(∂ϵ2∂h.^2.0)^0.5
+   
+    abs_∇ = abs(∂ϵ2∂h)
 
-    #@printf("Converge count threshold reached?\n")
-    if converge_count >= converge_count_threshold
+
+ 
+    # 1: Test if this iteration should stop
+    if abs_∇ < BLSS.η
+        @printf("The stop condition is met: abs(∂ϵ2∂h) = %f\n", abs_∇)
         break
     end
-   
-    #@printf("Gradient descent.\n")
-    # Calculate ∂Post∂h, ∂Post∂Q
-    # Assume flat prior for now
-    
-    ∂ϵ∂h = ∂θ∂t
-    ∂Post∂h = - sum(ϵ .* ∂ϵ∂h)
 
-    #@printf("Update h and Q.\n")
-    # Update h
-    h += ∂Post∂h * η
+    # 2: Compare values of ϵ2 of changing h and Taylor extrapolation
+    new_h  = h - BLSS.t * ∂ϵ2∂h_unit
 
-    ϵ_mem = ϵ_now 
+    _, ϵ2_from_new_h  = getϵandϵ2(new_h, ∂θ∂t, S, B)
+    ϵ2_from_taylor = ϵ2 - BLSS.α * BLSS.t * ∂ϵ2∂h_unit
+
+    if ϵ2_from_new_h > ϵ2_from_taylor
+        BLSS.t *= BLSS.β
+    else
+        h = new_h
+        if_update = true
+    end
+
+
+    @printf("Iter: %d. Update? %s. h: %.2f, ϵ2_from_new_h: %f, ϵ2_from_taylor: %f, BLSS.t: %f, abs_∇: %f\n",
+        k,
+        ((if_update == true) ? "YES" : "NO"),
+        h,
+        ϵ2_from_new_h,
+        ϵ2_from_taylor,
+        BLSS.t,
+        abs_∇
+    )
 end
 
 @printf("Result h: %.2f m.\n", h)
 
    
+
