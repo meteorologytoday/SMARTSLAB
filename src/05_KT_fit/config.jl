@@ -21,9 +21,12 @@ end
 rlons    = ncread(fn["omlmax"], "rlon")
 rlats    = ncread(fn["omlmax"], "rlat")
 
-SST   = ncread(fn["tos"], "tos")[:,:,:]
-S   = ncread(fn["S"], "S")[:,:,:]
-B   = ncread(fn["B"], "B")[:,:,:]
+
+rng = Colon()
+
+SST   = ncread(fn["tos"], "tos")[:,:,rng]
+S   = ncread(fn["S"], "S")[:,:,rng]
+B   = ncread(fn["B"], "B")[:,:,rng]
 
 dtype = eltype(SST)
 
@@ -31,14 +34,14 @@ missing_value = ncgetatt(fn["tos"], "tos", "missing_value")
 missing_places = (S .== ncgetatt(fn["S"], "S", "missing_value"))
 
 
-#SST[missing_places] = NaN
+SST[missing_places] .= NaN
 S[missing_places] .= NaN
 B[missing_places] .= NaN
 
 T_star = SST * ρ * c_p
 
 mon_secs = 365.0 / 12.0 * 86400.0
-nmons = length(ncread(fn["tos"], "time"))
+nmons = size(SST)[3]
 
 dt = 1.0 * mon_secs
 
@@ -48,5 +51,4 @@ end
 
 nyrs = Int(nmons / 12)
 @printf("We have %02d years of data.\n", nyrs)
-
 

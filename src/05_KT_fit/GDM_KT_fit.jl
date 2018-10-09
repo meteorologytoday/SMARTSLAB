@@ -3,7 +3,7 @@ include("NetCDFHelper.jl")
 
 using NetCDF
 using LinearAlgebra
-
+NC_VERBOSE = true
 function extend(a::AbstractArray, len::Int)
     if length(a) < len
         a = repeat(a, outer=ceil(Int, len / length(a)))
@@ -33,7 +33,7 @@ output_converge = zeros(dtype, length(rlons), length(rlats))
 dt2 = 2.0 * dt
 
 # Gradient Descent method parameters
-iter_max = 100
+iter_max = 10
 #update_bounds = [0.16, 0.16]
 ϵ_converge_ratio_threshold = 5e-3
 converge_count_threshold = 10
@@ -49,8 +49,6 @@ output_h .= 30.0
 h = zeros(dtype, N)
 Q = copy(h)
 ∂h∂t = copy(h)
-
-
 
 # Construct delta function
 I12 = zeros(dtype, 12, 12) + I
@@ -162,7 +160,7 @@ for i = 1:length(rlons), j = 1:length(rlats)
         #@printf("Update h and Q.\n")
         # Update h and Q
         h[1:12] += ∂Post∂h * η
-        Q[1:12] += ∂Post∂Q * η  
+        Q[1:12] += ∂Post∂Q * 0
 
         ϵ_mem = ϵ_now 
     end
@@ -185,51 +183,67 @@ output_h[missing_places_year] .= missing_value
 output_Q[missing_places_year] .= missing_value 
 output_converge[missing_places_single] .= missing_value
 
-time = collect(Float64, 1:12)
+time = collect(Float32, 1:12)
 
 filename = @sprintf("%s.nc", basename(@__FILE__))
 filename = joinpath(data_path, filename)
 
-NetCDFHelper.specialCopyNCFile(fn, filename, ["lat", "lon", "lat_vertices", "lon_vertices"])
 
+
+NetCDFHelper.specialCopyNCFile(fn["tos"], filename, ["lat", "lon", "lat_vertices", "lon_vertices"])
+
+println("Missing Value: ", missing_value)
+
+println("Output converge count")
+nccreate(
+    filename,
+    "converge",
+    "rlon", rlons,
+    "rlat", rlats,
+    atts=Dict(
+        "long_name" => "Converge count",
+        "units"=>"(Scalar)",
+        "missing_value" => missing_value,
+    )
+
+)
+ncwrite(output_converge, filename, "converge")
+
+
+println("Output h and Q")
 for obj in [
     [
         output_h, "h", Dict(
             "long_name"=>"Mixed-layer Thickness",
             "units"=>"m",
             "missing_value" => missing_value,
-            "time" => time,
         )
     ], [
         output_Q, "Q", Dict(
             "long_name"=>"Q-flux",
             "units"=>"W / m^2",
-            "missing_value" => missing_value
-            "time" => time,
-        )
-    ], [
-        output_converge, "converge", Dict(
-            "long_name" => "ness Changing Ratei",
-            "units"=>"m / s",
-            "missing_value" => missing_value
-            "time" => time,
+            "missing_value" => missing_value,
         )
     ]
+
 ]
+
     var     = obj[1]
     varname = obj[2]
     varatts = obj[3]
+
     nccreate(
         filename,
         varname,
-        "rlon",
-        "rlat",
-        "time", time,
+        "rlon", rlons, 
+        "rlat", rlats,
+        "time", 12,
         atts=varatts
     )
     ncwrite(var, filename, varname)
 
 end
+
 
 ncclose(filename)
 

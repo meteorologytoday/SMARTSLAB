@@ -51,7 +51,7 @@ for i = 1:length(rlons), j = 1:length(rlats)
     ϵ = F - ϕ * β[i, j, :]
     var = inv(ϕ'*ϕ) * (ϵ' * ϵ) / (1 + N)
     for k = 1:24
-        β_std[i, j, k] = sqrt(var[k, k])
+        β_std[i, j, k] = (var[k, k])^0.5
     end
         
 end
@@ -114,7 +114,7 @@ for obj in [
         )
     ], [
         dh_dt, "dh_dt", Dict(
-            "long_name" => "Mixed-layer Thickness Changing Ratei",
+            "long_name" => "Mixed-layer Thickness Changing Rate",
             "units"=>"m / s",
             "missing_value" => missing_value
         )
