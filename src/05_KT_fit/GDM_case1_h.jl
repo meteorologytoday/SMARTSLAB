@@ -13,7 +13,13 @@ dt2 = 2.0 * dt
 # Gradient Descent method parameters
 iter_max = 100
 
-BLSS = BacktrackingLineSearchStruct(iter_max, 0.1, 0.8, 10.0, 1e-3)
+BLSS = BacktrackingLineSearchStruct(
+    N = iter_max,
+    α = 0.1,
+    β = 0.8,
+    t = 10.0,
+    η = 1e-3
+)
 
 
 # Assign h and Q initial condition

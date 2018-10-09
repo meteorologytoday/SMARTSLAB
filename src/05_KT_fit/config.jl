@@ -23,6 +23,8 @@ rlats    = ncread(fn["omlmax"], "rlat")
 
 
 rng = Colon()
+rng = 1:60
+
 
 SST   = ncread(fn["tos"], "tos")[:,:,rng]
 S   = ncread(fn["S"], "S")[:,:,rng]
