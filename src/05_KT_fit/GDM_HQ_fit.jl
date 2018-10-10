@@ -12,16 +12,15 @@ function repeat_fill!(to::AbstractArray, fr::AbstractArray)
     end 
 end
 
-@inline eucLen    = x -> (sum(x.^2.0))^(0.5)
-@inline normalize = x -> x / encLen(x)
+eucLen    = x -> (sum(x.^2.0))^(0.5)
+normalize = x -> x / eucLen(x)
 
-function getϵandϵ2sum(h, ∂h∂t, θ, ∂θ∂t, S, B, Q)
+function getϵandϵ2avg(h, ∂h∂t, θ, ∂θ∂t, S, B, Q)
     ϵ = h .* ∂θ∂t + θ .* ∂h∂t .- S .- B .- Q
-    return ϵ, ϵ' * ϵ
+    return ϵ, ϵ' * ϵ / length(ϵ)
 end
 
-function GDM(
-    iter_max,
+function GDM(;
     h_init,
     Q_init,
     ∂θ∂t,
@@ -30,29 +29,54 @@ function GDM(
     B)
  
     global dt2, δ, ∂δ∂t, BLSS
-  
+ 
     N = length(S)
     h = S * 0.0
-    Q = coph(h)
+    Q = copy(h)
     ∂h∂t = copy(h)
+
+    new_h = copy(h)
+    new_Q = copy(h)
+    new_∂h∂t = copy(h)
+
 
     dtype = eltype(S)
     ∇Post = zeros(dtype, 24)  # 1:12 = h1~h12  13:24 = Q1~Q12
+
+    iter_count = 0
+
+    h[1:12] = h_init
+    Q[1:12] = Q_init
+
  
-    for k = 1 : iter_max
+    for k = 1 : BLSS.N
+
+        iter_count = k
+
+        if_update = false
 
         repeat_fill!(h,     h[1:12])
         repeat_fill!(Q,     Q[1:12])
         repeat_fill!(∂h∂t, (h[14:25] - h[12:23]) / dt2)  # Assume the length is long enough
 
-        ϵ, ϵ2sum = getϵandϵ2sum(h, ∂h∂t, θ, ∂θ∂t, S, B, Q)
+        ϵ, ϵ2avg = getϵandϵ2avg(h, ∂h∂t, θ, ∂θ∂t, S, B, Q)
 
-        ∇Post[ 1:12] = - (δ * (ϵ .* ∂θ∂t) + ∂δ∂t * (ϵ .* θ)) / length(ϵ)
-        ∇Post[13:24] = δ * ϵ / length(ϵ)
+        Post = - ϵ2avg
+
+        #∇Post[ 1:12] = - (δ * (ϵ .* ∂θ∂t) + ∂δ∂t * (ϵ .* θ))
+        #∇Post[13:24] = δ * ϵ
+
+        ∇Post[ 1:12] = - (δ * (ϵ .* ∂θ∂t))
+        ∇Post[13:24] .= 0
+ 
+
+        ∇Post /= length(ϵ)
 
         ∇Post_len  = eucLen(∇Post)
         ∇Post_unit = normalize(∇Post)
 
+        println(∇Post_unit)
+        #println(∇Post_unit)
 
         # 1: Test if this iteration should stop
         if ∇Post_len < BLSS.η
@@ -62,6 +86,7 @@ function GDM(
 
         # 2: Compare values of log(Posterior) of changing (h,Q) and Taylor extrapolation
 
+        # Add the gradient to move to larger posterior
         new_h[1:12] = h[1:12] + BLSS.t * ∇Post_unit[ 1:12]
         new_Q[1:12] = Q[1:12] + BLSS.t * ∇Post_unit[13:24]
  
@@ -69,22 +94,34 @@ function GDM(
         repeat_fill!(new_Q, new_Q[1:12])
         repeat_fill!(new_∂h∂t, (new_h[14:25] - new_h[12:23]) / dt2)
         
-        new_ϵ_from_new_hQ, new_Post_from_new_hQ = getϵandϵ2sum(h, ∂h∂t, θ, ∂θ∂t, S, B, Q)
-        new_Post_from_new_hQ *= -1.0
+        new_ϵ_from_new_hQ, new_Post_from_new_hQ = getϵandϵ2avg(new_h, new_∂h∂t, θ, ∂θ∂t, S, B, new_Q)
+        new_Post_from_new_hQ *= -1.0 
 
-        new_Post_from_taylor = -ϵ2sum
+        new_Post_from_taylor = Post + BLSS.α * BLSS.t * ∇Post_len
 
-        
 
-         
+        if new_Post_from_new_hQ < new_Post_from_taylor
+            BLSS.t *= BLSS.β
+        else
+            h[1:12] = new_h[1:12]
+            Q[1:12] = new_Q[1:12]
+            if_update = true
+        end
+    
+        @printf("Iter: %d. Update? %s. Post: %f, new_Post_from_new_hQ: %f, new_Post_from_taylor: %f, BLSS.t: %.2e, ∇Post_len: %f\n",
+            k,
+            (if_update) ? "YES" : "NO",
+            Post,
+            new_Post_from_new_hQ,
+            new_Post_from_taylor,
+            BLSS.t,
+            ∇Post_len
+	) 
 
-        # Update h and Q
-        h[1:12] += ∂Post∂h * η
-        Q[1:12] += ∂Post∂Q * η
-
-        ϵ_mem = ϵ_now 
     end
 
+    return h[1:12], Q[1:12], iter_count
+end
 
 
 
@@ -100,26 +137,19 @@ output_converge = zeros(dtype, length(rlons), length(rlats))
 dt2 = 2.0 * dt
 
 # Gradient Descent method parameters
-iter_max = 10
-
 BLSS = BacktrackingLineSearchStruct(
-    N = iter_max,
+    N = 101,
     α = 0.1,
     β = 0.8,
-    t = 10.0,
+    t = 1e-3,
     η = 1e-3
 )
 
 
 # Assign h and Q initial condition
 fn_HQ_REAL = joinpath(data_path, "case3_hQ.jl.nc")
-output_h = ncread(fn_HQ_REAL, "h")
-output_Q = ncread(fn_HQ_REAL, "Q")
-
-# In the length of N
-h = zeros(dtype, N)
-Q = copy(h)
-∂h∂t = copy(h)
+output_h = ncread(fn_HQ_REAL, "h") * 0 .+ 30.0
+output_Q = ncread(fn_HQ_REAL, "Q") * 0
 
 # Construct delta function
 I12 = zeros(dtype, 12, 12) + I
@@ -128,6 +158,11 @@ I12 = zeros(dtype, 12, 12) + I
     (circshift(I12,(0, 1)) - circshift(I12,(0, -1))) / dt2,
     outer=(1, nyrs-2)
 )
+println("## h")
+println(output_h[68, 124, :])
+println("## Q")
+println(output_Q[68, 124, :])
+
 
 
 # For each grid point
@@ -147,37 +182,35 @@ for i = 1:length(rlons), j = 1:length(rlats)
     end
 
 
-    ∂T_star∂t = (T_star[i, j, beg_t + 1 : beg_t + 1 + (N - 1)]
+    h_init = output_h[i, j, 1:12]
+    Q_init = output_Q[i, j, 1:12]
+
+    rng = beg_t : beg_t + (N-1)
+    S_now    = S[i, j, rng]
+    B_now    = B[i, j, rng]
+    θ_now    = T_star[i, j, rng]
+    ∂θ∂t_now = (T_star[i, j, beg_t + 1 : beg_t + 1 + (N - 1)]
                - T_star[i, j, beg_t - 1 : beg_t - 1 + (N - 1)]) / dt2
 
-   
-    h[1:12] = output_h[i, j, 1:12]
-    Q[1:12] = output_Q[i, j, 1:12]
 
 
-    #@printf("%d : %d\n", beg_t, beg_t + (N-1))
-    rng = beg_t : beg_t + (N-1)
-    S_term  = S[i, j, rng]
-    B_term  = B[i, j, rng]
-    ΔT_star = T_star[i, j, rng] .- Td_star
 
-    # Gradient Descent Init
-    converge_count = 0
-
-
-    GDM(h, Q)
-    output_h[i, j, :], output_Q[i, j, :] = GDM(h, Q, )
-
-
-    
-    output_h[i, j, :] = h[1:12]
-    output_Q[i, j, :] = Q[1:12]
-
-    if converge_count < converge_count_threshold
-        output_converge[i, j] = -999.0
-    end
+    output_h[i, j, :], output_Q[i, j, :], iter_count = GDM( 
+        h_init   = h_init,
+        Q_init   = Q_init,
+        ∂θ∂t     = ∂θ∂t_now,
+        θ        = θ_now,
+        S        = S_now,
+        B        = B_now
+    )
 
 end
+
+
+println("## h")
+println(output_h[68, 124, :])
+println("## Q")
+println(output_Q[68, 124, :])
 
 
 missing_places_year   = missing_places[:, :, 1:12]
