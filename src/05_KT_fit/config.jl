@@ -2,6 +2,18 @@ using NetCDF
 using Printf
 @printf("Running %s\n", basename(@__FILE__))
 
+function prtArr(A)
+    for i = 1:size(A)[1]
+        for j = 1:size(A)[2]
+
+            @printf("%.2f ", A[i,j]) 
+
+        end
+        @printf("\n")
+    end
+end
+
+dtype = Float64
 ρ    = 1027.0  # kg / m^3
 c_p  = 3985.0  # J / kg / K
 mon_secs = 365.0 / 12.0 * 86400.0
@@ -18,21 +30,21 @@ for varname in ["omlmax", "S", "B", "tos"]
 
 end
 
-rlons    = ncread(fn["omlmax"], "rlon")
-rlats    = ncread(fn["omlmax"], "rlat")
+rlons    = convert(Array{dtype}, ncread(fn["omlmax"], "rlon"))
+rlats    = convert(Array{dtype}, ncread(fn["omlmax"], "rlat"))
 
 
 rng = Colon()
-rng = 1:60
+#rng = 1:120
+
+SST = convert(Array{dtype}, ncread(fn["tos"], "tos")[:,:,rng])
+S   = convert(Array{dtype}, ncread(fn["S"], "S")[:,:,rng])
+B   = convert(Array{dtype}, ncread(fn["B"], "B")[:,:,rng])
 
 
-SST   = ncread(fn["tos"], "tos")[:,:,rng]
-S   = ncread(fn["S"], "S")[:,:,rng]
-B   = ncread(fn["B"], "B")[:,:,rng]
 
-dtype = eltype(SST)
 
-missing_value = ncgetatt(fn["tos"], "tos", "missing_value")
+missing_value = convert(dtype, ncgetatt(fn["tos"], "tos", "missing_value"))
 missing_places = (S .== ncgetatt(fn["S"], "S", "missing_value"))
 
 
@@ -40,12 +52,20 @@ SST[missing_places] .= NaN
 S[missing_places] .= NaN
 B[missing_places] .= NaN
 
-T_star = SST * ρ * c_p
+θ = convert(Array{dtype}, SST * ρ * c_p)
+#println(eltype(SST))
+#println(eltype(S))
+#println(eltype(B))
+#println(eltype(θ))
+
+println("Data type: ", dtype)
+
 
 mon_secs = 365.0 / 12.0 * 86400.0
 nmons = size(SST)[3]
 
 dt = 1.0 * mon_secs
+dt2 = 2.0 * dt
 
 if nmons % 12 != 0
     error("There are $nmons months, not a multiple of 12")
