@@ -20,9 +20,6 @@ function specialCopyNCFile(
 
     # setup File with correct dimensions and vars
     for key in keys(fr_fh.dim)
-        if key == "ncl3"
-            continue
-        end
         println("Found \"$key\", copy it.")
         _dim = fr_fh.vars[key]
         _dim = NetCDF.NcDim(key, NetCDF.readvar(_dim), _dim.atts)

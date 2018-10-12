@@ -3,10 +3,12 @@ include("NetCDFHelper.jl")
 
 using NetCDF
 
+# Equation:  h ∂θ/∂t = F + Q
+# h, Q are functions of both space and time.
+
 N       = Int((nyrs-2) * 12) # Discard the first and last year
 beg_t   = Int(13)            # Jan of second year
 
-ϕ = Base.SparseArrays.spzeros(eltype(T_star), N, 12 * 2)   # for h and Q
 ϕ = zeros(eltype(T_star), N, 12 * 2)   # for h and Q
 
 β     = zeros(eltype(T_star), length(rlons), length(rlats), 24)
@@ -16,17 +18,24 @@ dh_dt = zeros(eltype(T_star), length(rlons), length(rlats), 12)
 
 dt2 = 2.0 * dt
 @inline mod12(n) = mod(n-1, 12) + 1
+
+ϵ2sum = 0.0
+count = 0
+unreal_h_count = 0
+
 for i = 1:length(rlons), j = 1:length(rlats)
+
+    global ϵ2sum, count, unreal_h_count
 
     if j == 1
         @printf("Doing lon[%d]: %.1f\n", i, rlons[i])
     end
     
     if spatial_mask[i,j]
-        β[i,j,:] = NaN
+        β[i,j,:] .= NaN
         continue
     end
-    ϕ[:,:] = 0.0
+    ϕ .= 0.0
 
     for t = 1:N
 
@@ -47,8 +56,18 @@ for i = 1:length(rlons), j = 1:length(rlats)
     # Solve normal equation
     # ϕ β = F => β = ϕ \ F
     β[i, j, :] = ϕ \ F
+
+
+
     # Estimate standard deviation
     ϵ = F - ϕ * β[i, j, :]
+    ϵ2sum += sum(ϵ' * ϵ)
+    count += length(ϵ)
+
+    if sum(β[i, j, :] .< 0) != 0
+        unreal_h_count += 1
+    end
+
     var = inv(ϕ'*ϕ) * (ϵ' * ϵ) / (1 + N)
     for k = 1:24
         β_std[i, j, k] = (var[k, k])^0.5
@@ -56,10 +75,16 @@ for i = 1:length(rlons), j = 1:length(rlats)
         
 end
 
+@printf("Total Residue: %.e\n", ϵ2sum)
+@printf("Valid count: %d\n", count)
+@printf("Mean residue: %.e\n", (ϵ2sum / count)^0.5)
+@printf("Unrealistic h grid points: %d\n", unreal_h_count)
+
+
 # Derive dh_dt
 for i = 1:length(rlons), j = 1:length(rlats)
     if spatial_mask[i,j]
-        dh_dt[i,j,:] = NaN
+        dh_dt[i,j,:] .= NaN
         continue
     end
 
@@ -69,15 +94,12 @@ for i = 1:length(rlons), j = 1:length(rlats)
 end
 
 
-
-
-
 mask = isnan.(β)
 
-β[mask] = missing_value
-β_std[mask] = missing_value
+β[mask] .= missing_value
+β_std[mask] .= missing_value
 
-dh_dt[isnan.(dh_dt)] = missing_value
+dh_dt[isnan.(dh_dt)] .= missing_value
 
 time = collect(Float64, 1:12)
 

@@ -17,11 +17,11 @@ singular_matrix_value = -999.0
 N       = Int((nyrs-2) * 12) # Discard the first and last year
 beg_t   = Int(13)            # Jan of second year
 
-#TOT_F = (TOT_F[:, :, beg_t:beg_t+N-1] + TOT_F[:, :, beg_t+1:beg_t+N]) / 2.0 
-#dT_star_dt = (T_star[:, :, beg_t+1:beg_t+N] - T_star[:, :, beg_t:beg_t+N-1]) / mon_secs
+TOT_F = (TOT_F[:, :, beg_t:beg_t+N-1] + TOT_F[:, :, beg_t+1:beg_t+N]) / 2.0 
+dT_star_dt = (T_star[:, :, beg_t+1:beg_t+N] - T_star[:, :, beg_t:beg_t+N-1]) / mon_secs
 
-TOT_F = TOT_F[:, :, beg_t:beg_t+N-1]  # Discard the first and last year
-dT_star_dt = (T_star[:, :, beg_t+1:beg_t+N] - T_star[:, :, beg_t-1:beg_t+N-2]) / (2.0 * mon_secs)
+#TOT_F = TOT_F[:, :, beg_t:beg_t+N-1]  # Discard the first and last year
+#dT_star_dt = (T_star[:, :, beg_t+1:beg_t+N] - T_star[:, :, beg_t-1:beg_t+N-2]) / (2.0 * mon_secs)
 
 β = zeros(tp, length(rlons), length(rlats), 2)
 β_std = copy(β)

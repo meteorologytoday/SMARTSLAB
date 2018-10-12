@@ -3,33 +3,36 @@ include("NetCDFHelper.jl")
 
 using NetCDF
 
+
+# Equation:  ∂hθ/∂t = F + Q
+# h and Q are functions of time and space
+
 N       = Int((nyrs-2) * 12) # Discard the first and last year
 beg_t   = Int(13)            # Jan of second year
 
-ϕ = zeros(eltype(T_star), N, 12)   # for h
+ϕ = zeros(dtype, N, 12 * 2)   # for h and Q
 
-β     = zeros(eltype(T_star), length(rlons), length(rlats), 12)
+β     = zeros(dtype, length(rlons), length(rlats), 24)
 β_std = copy(β)
 
-dh_dt = zeros(eltype(T_star), length(rlons), length(rlats), 12)
+dh_dt = zeros(dtype, length(rlons), length(rlats), 12)
 
-dt2 = 2.0 * dt
-@inline mod12(n) = mod(n-1, 12) + 1
+println("dt2: ", dt2)
 
-# Equation:  h ∂θ/∂t = F  
-# h is a function of both space and time.
+
+rng1 = collect(beg_t:(beg_t + N -1))
+rng2 = rng1 .+ 1
 
 ϵ2sum = 0.0
-count = 0
+ϵ2count = 0
 unreal_h_count = 0
 for i = 1:length(rlons), j = 1:length(rlats)
-    global ϵ2sum, count, unreal_h_count
-
+    global ϵ2sum, ϵ2count, unreal_h_count
     if j == 1
         @printf("Doing lon[%d]: %.1f\n", i, rlons[i])
     end
-    
-    if spatial_mask[i,j]
+
+    if missing_places[i, j, 1]
         β[i,j,:] .= NaN
         continue
     end
@@ -37,47 +40,57 @@ for i = 1:length(rlons), j = 1:length(rlats)
     ϕ .= 0.0
 
     for t = 1:N
+
         # ϕ_h
-        ϕ[t, mod12(t+1)] =   T_star[i, j, (beg_t + t - 1) + 1] / dt2
-        ϕ[t, mod12(t-1)] = - T_star[i, j, (beg_t + t - 1) - 1] / dt2
+        ϕ[t, mod12(t  )] = - θ[i, j, (beg_t + t - 1)    ] / dt
+        ϕ[t, mod12(t+1)] =   θ[i, j, (beg_t + t - 1) + 1] / dt
+
+        # ϕ_Q
+        ϕ[t, 12 + mod12(t  )] =  - .5
+        ϕ[t, 12 + mod12(t+1)] =  - .5
 
     end
 
-    #prtArr(ϕ[1:36, :])
-    #exit()
-
-    F =  TOT_F[i, j, beg_t:(beg_t + N - 1)]
+    _F =  (F[i, j, rng1] + F[i, j, rng2]) / 2.0
 
     # Solve normal equation
     # ϕ β = F => β = ϕ \ F
-    β[i, j, :] = ϕ \ F
-    # Estimate standard deviation
-    ϵ = F - ϕ * β[i, j, :]
-    ϵ2sum += sum(ϵ' * ϵ)
-    count += length(ϵ)
+    β[i, j, :] = ϕ \ _F
 
-    if sum(β[i, j, :] .< 0) != 0
+    # Estimate standard deviation
+    ϵ = _F - ϕ * β[i, j, :]
+    ϵ2sum += sum(ϵ' * ϵ)
+    ϵ2count += length(ϵ)
+ 
+    if sum(β[i, j, 1:12] .< 0) != 0
         unreal_h_count += 1
     end
 
-    var = inv(ϕ'*ϕ) * (ϵ' * ϵ) / (1 + N)
-    for k = 1:12
-        β_std[i, j, k] = (var[k, k])^0.5
-    end
-    
-        
 end
 
-@printf("Total Residue: %.e\n", ϵ2sum)
-@printf("Valid count: %d\n", count)
-@printf("Mean residue: %.e\n", (ϵ2sum / count)^0.5)
+Q2 = β[:,:,13:24].^2.0
+Q2count = sum(isfinite.(Q2), dims=(1,3))
+Q2[isnan.(Q2)] .= 0.0
+Q2sum = sum(Q2, dims=(1,3))
+q = ((Q2sum ./ Q2count).^.5)[1,:,1]
+println("length(q): ", length(q))
+
+println("######")
+println("Mean Q magnitude: ", q)
+
+
+println("######")
+@printf("Mean residue: %.e\n", (ϵ2sum / ϵ2count)^0.5)
 @printf("Unrealistic h grid points: %d\n", unreal_h_count)
+
+println("## h")
+println(β[68, 124, :])
 
 
 # Derive dh_dt
 for i = 1:length(rlons), j = 1:length(rlats)
-    if spatial_mask[i,j]
-        dh_dt[i,j,:] = NaN
+    if missing_places[i,j,1]
+        dh_dt[i,j,:] .= NaN
         continue
     end
 
@@ -87,22 +100,15 @@ for i = 1:length(rlons), j = 1:length(rlats)
 end
 
 
-
-
-
 mask = isnan.(β)
 
-β[mask] .= missing_value
-β_std[mask] .= missing_value
-
-dh_dt[isnan.(dh_dt)] .= missing_value
 
 time = collect(Float64, 1:12)
 
 filename = @sprintf("%s.nc", basename(@__FILE__))
 filename = joinpath(data_path, filename)
 
-NetCDFHelper.specialCopyNCFile(fn, filename, ["lat", "lon", "lat_vertices", "lon_vertices"])
+NetCDFHelper.specialCopyNCFile(fn["tos"], filename, ["lat", "lon", "lat_vertices", "lon_vertices"])
 
 
 for obj in [
@@ -110,30 +116,36 @@ for obj in [
         β[:, :,  1:12], "h", Dict(
             "long_name"=>"Mixed-layer Thickness",
             "units"=>"m",
-            "missing_value" => missing_value
+            "_FillValue" => missing_value,
+            "missing_value" => missing_value,
+
         )
     ], [
         β[:, :, 13:24], "Q", Dict(
             "long_name"=>"Q-flux",
             "units"=>"W / m^2",
+            "_FillValue" => missing_value,
             "missing_value" => missing_value
         )
     ], [
         β_std[:, :,  1:12], "h_std", Dict(
             "long_name"=>"Mixed-layer Thickness Standard Deviation",
             "units"=>"m",
+            "_FillValue" => missing_value,
             "missing_value" => missing_value
         )
     ], [
         β_std[:, :, 13:24], "Q_std", Dict(
             "long_name"=>"Q-flux Standard Deviation",
             "units"=>"W / m^2",
+            "_FillValue" => missing_value,
             "missing_value" => missing_value
         )
     ], [
         dh_dt, "dh_dt", Dict(
             "long_name" => "Mixed-layer Thickness Changing Rate",
             "units"=>"m / s",
+            "_FillValue" => missing_value,
             "missing_value" => missing_value
         )
     ]
@@ -141,17 +153,51 @@ for obj in [
     var     = obj[1]
     varname = obj[2]
     varatts = obj[3]
+
+
+    var[isnan.(var)] .= missing_value
+
+    println("Writing ", varname)
+
     nccreate(
         filename,
         varname,
         "rlon",
         "rlat",
-        "time", time,
+        "time", 12,
         atts=varatts
     )
     ncwrite(var, filename, varname)
 
 end
+
+for obj in (
+    [
+        q, "q", Dict(
+            "long_name" => "Zonal mean of q",
+            "units"=>"W / m^2",
+            "_FillValue" => missing_value,
+            "missing_value" => missing_value
+        )
+    ],
+)
+    var     = obj[1]
+    varname = obj[2]
+    varatts = obj[3]
+
+    var[isnan.(var)] .= missing_value
+    println("Writing ", varname)
+
+    nccreate(
+        filename,
+        varname,
+        "rlat",
+        atts=varatts
+    )
+    ncwrite(var, filename, varname)
+
+end
+
 
 ncclose(filename)
 

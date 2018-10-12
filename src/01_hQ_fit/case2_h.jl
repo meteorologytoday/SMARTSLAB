@@ -1,15 +1,5 @@
 include("config.jl")
 include("NetCDFHelper.jl")
-function nansum(A::Array)
-    s, n = 0.0, 0.0
-    for val in A
-        if !isnan(val)
-            s += val
-            n += 1.0
-        end
-    end
-    return s / n
-end
 
 assumption_break_value = -9999.0
 singular_matrix_value = -999.0
@@ -17,20 +7,27 @@ singular_matrix_value = -999.0
 N       = Int((nyrs-2) * 12) # Discard the first and last year
 beg_t   = Int(13)            # Jan of second year
 
-
 TOT_F = TOT_F[:, :, beg_t:beg_t+N-1]  # Discard the first and last year
 dT_star_dt = (T_star[:, :, beg_t+1:beg_t+N] - T_star[:, :, beg_t-1:beg_t+N-2]) / (2.0 * mon_secs)
 
-β = Array{tp, 3}(length(rlons), length(rlats), 1)
+β = zeros(tp, length(rlons), length(rlats), 1)
 β_std = copy(β)
 
-ϕ = Array{tp, 2}(N, 1)
+ϕ = zeros(tp, N, 1)
 
 
 
 println("Doing calculation... ")
+
+# Equation:  h ∂θ/∂t = F  
+# h is only function of space. No time dependence.
+
+
+ϵ2sum = 0.0
+count = 0
 for i = 1:length(rlons), j = 1:length(rlats)
-    # try-catch block uses soft local scope (annoying feature)
+    global ϵ2sum, count
+
     local var
 
     if j == 1
@@ -38,12 +35,13 @@ for i = 1:length(rlons), j = 1:length(rlats)
     end
     
     if spatial_mask[i,j]
-        β[i, j, :] = NaN
-        β_std[i, j, :] = NaN
+
+        β[i, j, :] .= NaN
+        β_std[i, j, :] .= NaN
         continue
     end
 
-    ϕ[:, 1] = dT_star_dt[i, j]
+    ϕ[:, 1] = dT_star_dt[i, j, :]
     
     # Solve normal equation
     # ϕ β = F => β = ϕ \ TOT_F
@@ -51,7 +49,8 @@ for i = 1:length(rlons), j = 1:length(rlats)
 
     # Estimate standard deviation
     ϵ = TOT_F[i, j, :] - ϕ * β[i, j, :]
-
+    ϵ2sum += sum(ϵ' * ϵ)
+    count += length(ϵ)
     try
         var = inv(ϕ'*ϕ) * (ϵ' * ϵ) / (1 + N)
     catch e
@@ -73,8 +72,19 @@ for i = 1:length(rlons), j = 1:length(rlats)
 end
 println("done.")
 
-β[isnan.(β)] = missing_value
-β_std[isnan.(β_std)] = missing_value
+h = β[:, :, 1]
+h = h[isfinite.(h)]
+unreal_h_count = sum(h .< 0)
+@printf("Total Residue: %.e\n", ϵ2sum)
+@printf("Valid count: %d\n", count)
+@printf("Mean residue: %.e\n", (ϵ2sum / count)^0.5)
+@printf("Unrealistic h grid points: %d / %d \n", unreal_h_count, length(h))
+
+
+
+
+β[isnan.(β)] .= missing_value
+β_std[isnan.(β_std)] .= missing_value
 
 filename = @sprintf("data/%s.nc", basename(@__FILE__))
 NetCDFHelper.specialCopyNCFile(fn, filename, ["lat", "lon", "lat_vertices", "lon_vertices"])

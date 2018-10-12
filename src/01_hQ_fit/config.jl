@@ -21,22 +21,25 @@ data_path = joinpath(dirname(@__FILE__), "..", "..", "data")
 fn = joinpath(data_path, "SMART_Omon_GFDL-ESM2G_historical_r1i1p1_186101-200112.nc")
 
 
-rlons    = ncread(fn, "rlon")
-rlats    = ncread(fn, "rlat")
+rlons = ncread(fn, "rlon")
+rlats = ncread(fn, "rlat")
 
 
-TOT_F = ncread(fn, "total_downward_heat_flux")
+TOT_F = ncread(fn, "S") + ncread(fn, "B")
 #TOT_F = ncread(fn, "hfds")[:,:,:]
 SST   = ncread(fn, "tos")[:,:,:]
 tp = eltype(TOT_F)
 
-missing_value = ncgetatt(fn, "tos", "missing_value")
+missing_value = ncgetatt(fn, "tos", "_FillValue")
 
-TOT_F[TOT_F .== ncgetatt(fn, "total_downward_heat_flux", "missing_value")] .= NaN
-SST[SST .== ncgetatt(fn, "tos", "missing_value")] .= NaN
+TOT_F[TOT_F .== missing_value] .= NaN
+SST[SST .== missing_value] .= NaN
 
 spatial_mask = isnan.(SST[:,:,1])
 spatial_temporal_mask = isnan.(SST)
+
+println(sum(spatial_mask))
+println(sum(spatial_temporal_mask))
 
 T_star = SST * ρ * c_p
 

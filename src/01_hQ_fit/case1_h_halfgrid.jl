@@ -3,8 +3,8 @@ include("config.jl")
 @inline nansum(A::Array) = sum(A[isfinite.(A)])
 
 # Discard the first and last year
-TOT_F = TOT_F[:, :, 13:end-12] 
-dT_star_dt = (T_star[:, :, 14:end-11] - T_star[:, :, 12:end-13]) / (2.0 * mon_secs)
+TOT_F = (TOT_F[:, :, 13:end-12] + TOT_F[:, :, 14:end-11]) / 2.0 
+dT_star_dt = (T_star[:, :, 14:end-11] - T_star[:, :, 13:end-12]) / mon_secs
 
 #nyrs = 8
 #TOT_F = TOT_F[:, :, 13:13+nyrs*12-1] 
