@@ -1,12 +1,9 @@
 include("config.jl")
 include("NetCDFHelper.jl")
-include("Newton.jl")
+include("BacktrackingLineSearchStruct.jl")
 
 using NetCDF
 using LinearAlgebra
-
-iii = 168
-jjj = 46
 
 iii, jjj = 125, 137
 
@@ -18,8 +15,6 @@ output_Q = copy(output_h)
 output_converge = zeros(dtype, length(rlons), length(rlats))
 
 dt2 = 2.0 * dt
-
-η = 1e-3
 
 # Construct δ* function
 Δ = (i, j) -> (i == (mod(j-1, 12) + 1)) ? 1 : 0
@@ -43,39 +38,142 @@ eucLen    = x -> (sum(x.^2.0))^(0.5)
 normalize = x -> x / eucLen(x)
 @inline mod12(n) = mod(n-1, 12) + 1
 
-
-
-∇ϵ = zeros(dtype, N, 24)
-for i=1:N, j=1:12
-    ∇ϵ[i, j+12] = - δ_mid[j, i]
-end
-
-function g_and_∇g(;h, Q, θ, θ_p1, S_ph, B_ph)
-
-    repeat_fill!(h, h[1:12])
-    repeat_fill!(Q, Q[1:12])
-
+function getϵandϵ2avg(;h, θ, θ_p1, S_ph, B_ph, Q)
     h_p1 = circshift(h, -1)
-    Q_ph = (Q + circshift(Q, -1)) / 2.0
+    #Q_ph = (Q + circshift(Q, -1)) / 2.0
 
-    ϵ = (h_p1 .* θ_p1 - h .* θ) / dt - S_ph - B_ph - Q_ph
-
-    #ϵ = getϵandϵ2avg(h=h, θ=θ, θ_p1=θ_p1, S_ph=S_ph, B_ph=B_ph, Q=Q)
-
-    for i=1:N, j=1:12
-        ∇ϵ[i, j] = ( - δ[j, i] * θ[i] + δ_p1[j, i] * θ_p1[i] ) / dt
-    end
-    #=
-    for i=1:N, j=1:12
-        ∇ϵ[i, j+12] = - δ_mid[j, i]
-    end
-    =#
-
-    g  = ∇ϵ' * ϵ
-    ∇g = ∇ϵ' * ∇ϵ 
-
-    return g, ∇g  
+    ϵ = (h_p1 .* θ_p1 - h .* θ) / dt - S_ph - B_ph - Q
+    return ϵ, ϵ' * ϵ / length(ϵ)
 end
+# Gradient Descent method parameters
+BLSS = BacktrackingLineSearchStruct(
+    N = 100000,
+    α = 0.1,
+    β = 0.8,
+    t = 1000.0,
+    η = 1e-3
+)
+
+function GDM(;
+    h_init,
+    Q_init,
+    θ,
+    θ_p1,
+    S_ph,
+    B_ph)
+ 
+    h = θ * 0.0
+    Q = copy(h)
+
+    new_h = copy(h)
+    new_Q = copy(h)
+
+    dtype = eltype(S)
+    ∇Post = zeros(dtype, 24)  # 1:12 = h1~h12  13:24 = Q1~Q12
+
+    iter_count = 0
+
+    h[1:12] = h_init
+    Q[1:12] = Q_init
+
+    repeat_fill!(h,     h[1:12])
+    repeat_fill!(Q,     Q[1:12])
+ 
+    for k = 1 : BLSS.N
+        iter_count = k
+
+        if_update = false
+
+        repeat_fill!(h,     h[1:12])
+        repeat_fill!(Q,     Q[1:12])
+        ϵ, ϵ2avg = getϵandϵ2avg(h=h, θ=θ, θ_p1=θ_p1, S_ph=S_ph, B_ph=B_ph, Q=Q)
+        Post = - ϵ2avg
+
+        ∇Post[ 1:12] = - (δ_p1 * (ϵ .* θ_p1) - δ * (ϵ .* θ)) / dt
+        ∇Post[13:24] = δ * ϵ  
+        #∇Post[ 1:12] .= 0
+        ∇Post /= length(ϵ)
+
+        ∇Post_len  = eucLen(∇Post)
+        ∇Post_unit = normalize(∇Post)
+
+        # Complex derivative check
+        #=
+        complex_check = ∇Post * 0.0
+
+        η = 1e-50
+        for d = 1:12
+            h_tmp = h * 1.0
+            h_tmp[d] += η * im 
+            repeat_fill!(h_tmp, h_tmp[1:12])
+            _, new_ϵ2avg = getϵandϵ2avg(h=h_tmp, θ=θ, θ_p1=θ_p1, S_ph=S_ph, B_ph=B_ph, Q=Q)
+            complex_check[d] = - imag(new_ϵ2avg) / η
+        end
+
+        for d = 1:12
+            Q_tmp = Q * 1.0
+            Q_tmp[d] += η * im 
+            repeat_fill!(Q_tmp, Q_tmp[1:12])
+            _, new_ϵ2avg = getϵandϵ2avg(h=h, θ=θ, θ_p1=θ_p1, S_ph=S_ph, B_ph=B_ph, Q=Q_tmp)
+            println(new_ϵ2avg)
+            complex_check[d+12] = - imag(new_ϵ2avg) / η
+        end
+
+        println("∇Post:")
+        println(∇Post)
+        println("Complex Check:")
+        println(complex_check)
+
+        println(∇Post ./ complex_check)
+        
+        exit()
+        =#
+        # 1: Test if this iteration should stop
+        if ∇Post_len < BLSS.η
+            @printf("The stop condition is met. End loop immediately.\n")
+            break
+        end
+
+        # 2: Compare values of log(Posterior) of changing (h,Q) and Taylor extrapolation
+        ## Add the gradient to move to larger posterior
+        new_h[1:12] = h[1:12] + BLSS.t * ∇Post_unit[ 1:12]
+        new_Q[1:12] = Q[1:12] + BLSS.t * ∇Post_unit[13:24]
+ 
+        repeat_fill!(new_h, new_h[1:12])
+        repeat_fill!(new_Q, new_Q[1:12])
+        new_ϵ_from_new_hQ, new_Post_from_new_hQ = getϵandϵ2avg(h=new_h, θ=θ, θ_p1=θ_p1, S_ph=S_ph, B_ph=B_ph, Q=new_Q)
+        new_Post_from_new_hQ *= -1.0 
+
+        new_Post_from_taylor = Post + BLSS.α * BLSS.t * ∇Post_len
+
+
+        if new_Post_from_new_hQ < new_Post_from_taylor
+            BLSS.t *= BLSS.β
+        else
+            #BLSS.t /= BLSS.β
+            h[1:12] = new_h[1:12]
+            Q[1:12] = new_Q[1:12]
+            if_update = true
+        end
+        if true || k == BLSS.N
+        @printf("Iter: %d. Update? %s. Post: %f, ΔPost_from_new_hQ: %f, ΔPost_from_taylor: %f, BLSS.t: %.2e, ∇Post_len: %f\n",
+            k,
+            (if_update) ? "YES" : "NO",
+            Post,
+            new_Post_from_new_hQ - Post,
+            new_Post_from_taylor - Post,
+            BLSS.t,
+            ∇Post_len
+	)
+        end
+        #println(Q[1:12]) 
+    end
+    
+    return h[1:12], Q[1:12], iter_count
+end
+
+
+
 
 
 # Assign h and Q initial condition
@@ -94,12 +192,12 @@ output_h .*= rand(size(output_h)...) * 0.0
 output_Q .*= rand(size(output_h)...) * 0.0
 
 
+
+
 rng1 = collect(beg_t : beg_t + (N-1))
 rng2 = rng1 .+ 1
 
-h_long_vec = zeros(dtype, N)
-Q_long_vec = zeros(dtype, N)
-x0 = zeros(dtype, 24)
+# For each grid point
 for i = 1:length(rlons), j = 1:length(rlats)
 
 #    if j == 1
@@ -115,48 +213,34 @@ for i = 1:length(rlons), j = 1:length(rlats)
         continue
     end
 
+
+    h_init = output_h[i, j, 1:12]
+    Q_init = output_Q[i, j, 1:12]
+
+
     _S_ph = (S[i, j, rng1] + S[i, j, rng2]) / 2.0
     _B_ph = (B[i, j, rng1] + B[i, j, rng2]) / 2.0
     _θ    = θ[i, j, rng1]
     _θ_p1 = θ[i, j, rng2]
 
-    _g_and_∇g = function(x)
-        h_long_vec[1:12] = x[ 1:12]
-        Q_long_vec[1:12] = x[13:24]
-        return g_and_∇g(
-            h = h_long_vec,
-            Q = Q_long_vec,
-            θ = _θ,
-            θ_p1 = _θ_p1,
-            S_ph = _S_ph,
-            B_ph = _B_ph
-        )
-    end
 
-    global x0
-    x0[ 1:12] = output_h[i, j, :] 
-    x0[13:24] = output_Q[i, j, :] 
-
-    x_opt = Newton(
-        g_and_∇g = _g_and_∇g,
-        η        = η,
-        x0       = x0,
-        max      = 1000
+    output_h[i, j, :], output_Q[i, j, :], iter_count = GDM( 
+        h_init = h_init,
+        Q_init = Q_init,
+        θ      = _θ,
+        θ_p1   = _θ_p1,
+        S_ph   = _S_ph,
+        B_ph   = _B_ph
     )
 
-    output_h[i, j, :] = x_opt[ 1:12]
-    output_Q[i, j, :] = x_opt[13:24]
 end
 
 
-#println(rlons[125], "  ", rlats[137])
-println("## h")
+println(rlons[iii], "  ", rlats[jjj])
+println("## GDM h")
 println(output_h[iii, jjj, :])
-println("## Q")
+println("## GDM Q")
 println(output_Q[iii, jjj, :] )
-println("## Linear Regression Q(i+1/2)")
-println((output_Q[iii,jjj,:] + circshift(output_Q[iii, jjj, :], -1)) / 2.0)
-
 
 
 missing_places_year   = missing_places[:, :, 1:12]
@@ -231,3 +315,5 @@ end
 ncclose(filename)
 
 @printf("Output file: %s\n", filename)
+
+
