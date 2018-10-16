@@ -2,7 +2,7 @@ include("config.jl")
 include("NetCDFHelper.jl")
 
 using NetCDF
-
+using LinearAlgebra
 
 # Equation:  ∂hθ/∂t = F + Q
 # h and Q are functions of time and space
@@ -29,8 +29,13 @@ unreal_h_count = 0
 for i = 1:length(rlons), j = 1:length(rlats)
     global ϵ2sum, ϵ2count, unreal_h_count
     if j == 1
-        @printf("Doing lon[%d]: %.1f\n", i, rlons[i])
+#        @printf("Doing lon[%d]: %.1f\n", i, rlons[i])
     end
+
+    if i != 68 || j != 124
+        continue
+    end
+
 
     if missing_places[i, j, 1]
         β[i,j,:] .= NaN
@@ -56,6 +61,18 @@ for i = 1:length(rlons), j = 1:length(rlats)
     # Solve normal equation
     # ϕ β = F => β = ϕ \ F
     β[i, j, :] = ϕ \ _F
+    #β[i, j, :] = convert(Array{Float32}, ϕ) \ convert(Array{Float32}, _F)
+
+   
+ 
+    println("sum ϕ: ", sum(abs.(ϕ - convert(Array{Float32,2}, ϕ))))
+    Φ = convert(Array{Float32,2}, ϕ)
+    println("det( ϕTϕ ): ", det(ϕ' * ϕ))
+    println("det( ΦTΦ ): ", det(Φ' * Φ))
+
+
+    println(β[i, j, :])
+
 
     # Estimate standard deviation
     ϵ = _F - ϕ * β[i, j, :]

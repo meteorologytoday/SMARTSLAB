@@ -46,7 +46,7 @@ end
 =#
 
 rng = Colon()
-#rng = 1:60
+rng = 1:48
 
 SST = convert(Array{dtype}, ncread(fn["tos"], "tos")[:,:,rng])
 S   = convert(Array{dtype}, ncread(fn["S"], "S")[:,:,rng])

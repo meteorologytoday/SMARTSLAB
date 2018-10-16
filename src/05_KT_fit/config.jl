@@ -13,6 +13,7 @@ function prtArr(A)
     end
 end
 
+dtype = Complex{Float64}#Float64
 dtype = Float64
 ρ    = 1027.0  # kg / m^3
 c_p  = 3985.0  # J / kg / K
@@ -40,9 +41,6 @@ rng = Colon()
 SST = convert(Array{dtype}, ncread(fn["tos"], "tos")[:,:,rng])
 S   = convert(Array{dtype}, ncread(fn["S"], "S")[:,:,rng])
 B   = convert(Array{dtype}, ncread(fn["B"], "B")[:,:,rng])
-
-
-
 
 missing_value = convert(dtype, ncgetatt(fn["tos"], "tos", "missing_value"))
 missing_places = (S .== ncgetatt(fn["S"], "S", "missing_value"))

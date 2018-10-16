@@ -5,7 +5,7 @@ include("BacktrackingLineSearchStruct.jl")
 using NetCDF
 using LinearAlgebra
 
-Q_scale = 1e3
+Q_scale = 1.0
 
 function repeat_fill!(to::AbstractArray, fr::AbstractArray)
     len_fr = length(fr)
@@ -17,6 +17,10 @@ end
 eucLen    = x -> (sum(x.^2.0))^(0.5)
 normalize = x -> x / eucLen(x)
 @inline mod12(n) = mod(n-1, 12) + 1
+
+
+
+
 
 function getϵandϵ2avg(h, θ_p1, θ_m1, S, B, Q)
     global dt2
@@ -32,7 +36,7 @@ function getϵandϵ2avg(h, θ_p1, θ_m1, S, B, Q)
     end
     =#
 
-    return ϵ, ϵ' * ϵ / length(ϵ)
+    return ϵ, transpose(ϵ) * ϵ / length(ϵ)
 end
 
 function GDM(;
@@ -74,6 +78,40 @@ function GDM(;
         ∇Post[13:24] = δ * ϵ * Q_scale
         #∇Post[ 1:12] .= 0
         ∇Post /= length(ϵ)
+
+        
+        # Complex derivative check
+
+        complex_check = ∇Post * 0.0
+
+        η = 1e-50
+        for d = 1:12
+            h_tmp = h * 1.0
+            h_tmp[d] += η * im 
+            repeat_fill!(h_tmp, h_tmp[1:12])
+            _, new_ϵ2avg = getϵandϵ2avg(h_tmp, θ_p1, θ_m1, S, B, Q)
+            complex_check[d] = - imag(new_ϵ2avg) / η
+        end
+
+        for d = 1:12
+            Q_tmp = Q * 1.0
+            Q_tmp[d] += η * im 
+            repeat_fill!(Q_tmp, Q_tmp[1:12])
+            _, new_ϵ2avg = getϵandϵ2avg(h, θ_p1, θ_m1, S, B, Q_tmp)
+            println(new_ϵ2avg)
+            complex_check[d+12] = - imag(new_ϵ2avg) / η
+        end
+
+        println("∇Post:")
+        println(∇Post)
+        println("Complex Check:")
+        println(complex_check)
+
+        println(∇Post ./ complex_check)
+
+        exit()
+
+
 
         ∇Post_len  = eucLen(∇Post)
         ∇Post_unit = normalize(∇Post)
@@ -157,9 +195,12 @@ BLSS = BacktrackingLineSearchStruct(
 
 
 # Assign h and Q initial condition
-fn_HQ_REAL = joinpath(data_path, "case3_hQ.jl.nc")
-output_h = ncread(fn_HQ_REAL, "h") * 0 .+ 30.0
-output_Q = ncread(fn_HQ_REAL, "Q") * 0
+#fn_HQ_REAL = joinpath(data_path, "case3_hQ.jl.nc")
+#output_h = ncread(fn_HQ_REAL, "h") * 0 .+ 30.0
+#output_Q = ncread(fn_HQ_REAL, "Q") * 0
+
+output_h = zeros(dtype, length(rlons), length(rlats), 12)
+output_Q = copy(output_h)
 
 
 

@@ -1,11 +1,36 @@
 include("config.jl")
 include("NetCDFHelper.jl")
-include("BacktrackingLineSearchStruct.jl")
+include("Newton.jl")
 
 using NetCDF
 using LinearAlgebra
 
-Q_scale = 1.0
+iii = 168
+jjj = 46
+
+iii, jjj = 125, 137
+
+N       = Int((nyrs-2) * 12) # Discard the first and last year
+beg_t   = Int(13)            # Jan of second year
+
+output_h  = zeros(dtype, length(rlons), length(rlats), 12)
+output_Q = copy(output_h)
+output_converge = zeros(dtype, length(rlons), length(rlats))
+
+dt2 = 2.0 * dt
+
+η = 1e-3
+
+# Construct δ* function
+Δ = (i, j) -> (i == (mod(j-1, 12) + 1)) ? 1 : 0
+δ    = zeros(dtype, 12, N)
+δ_p1 = copy(δ)
+
+for k=1:12, i=1:N
+    δ[k, i]    = Δ(k, i  )
+    δ_p1[k, i] = Δ(k, i+1)
+end
+δ_mid = (δ + δ_p1) / 2.0
 
 function repeat_fill!(to::AbstractArray, fr::AbstractArray)
     len_fr = length(fr)
@@ -18,131 +43,39 @@ eucLen    = x -> (sum(x.^2.0))^(0.5)
 normalize = x -> x / eucLen(x)
 @inline mod12(n) = mod(n-1, 12) + 1
 
-function getϵandϵ2avg(;h, θ, θ_p1, S_ph, B_ph, Q)
+
+
+∇ϵ = zeros(dtype, N, 24)
+for i=1:N, j=1:12
+    ∇ϵ[i, j+12] = - δ_mid[j, i]
+end
+
+function g_and_∇g(;h, Q, θ, θ_p1, S_ph, B_ph)
+
+    repeat_fill!(h, h[1:12])
+    repeat_fill!(Q, Q[1:12])
+
     h_p1 = circshift(h, -1)
-    Q_ph = Q #(Q + circshift(Q, -1)) / 2.0
+    Q_ph = (Q + circshift(Q, -1)) / 2.0
 
-    ϵ = (h_p1 .* θ_p1 - h .* θ) / dt - S_ph - B_ph - Q_ph * Q_scale
+    ϵ = (h_p1 .* θ_p1 - h .* θ) / dt - S_ph - B_ph - Q_ph
 
-    return ϵ, ϵ' * ϵ / length(ϵ)
-end
+    #ϵ = getϵandϵ2avg(h=h, θ=θ, θ_p1=θ_p1, S_ph=S_ph, B_ph=B_ph, Q=Q)
 
-function GDM(;
-    h_init,
-    Q_init,
-    θ,
-    θ_p1,
-    S_ph,
-    B_ph)
- 
-    h = θ * 0.0
-    Q = copy(h)
-
-    new_h = copy(h)
-    new_Q = copy(h)
-
-    dtype = eltype(S)
-    ∇Post = zeros(dtype, 24)  # 1:12 = h1~h12  13:24 = Q1~Q12
-
-    iter_count = 0
-
-    h[1:12] = h_init
-    Q[1:12] = Q_init
-
-    for k = 1 : BLSS.N
-        iter_count = k
-
-        if_update = false
-
-        repeat_fill!(h,     h[1:12])
-        repeat_fill!(Q,     Q[1:12])
-        ϵ, ϵ2avg = getϵandϵ2avg(h=h, θ=θ, θ_p1=θ_p1, S_ph=S_ph, B_ph=B_ph, Q=Q)
-        Post = - ϵ2avg
-
-        ∇Post[ 1:12] = - (δ_p1 * (ϵ .* θ_p1) - δ * (ϵ .* θ)) / dt
-        ∇Post[13:24] = - δ * ϵ * Q_scale 
-        #∇Post[ 1:12] .= 0
-        ∇Post /= length(ϵ)
-
-        ∇Post_len  = eucLen(∇Post)
-        ∇Post_unit = normalize(∇Post)
-
-        # 1: Test if this iteration should stop
-        if ∇Post_len < BLSS.η
-            @printf("The stop condition is met. End loop immediately.\n")
-            break
-        end
-
-        # 2: Compare values of log(Posterior) of changing (h,Q) and Taylor extrapolation
-        ## Add the gradient to move to larger posterior
-        new_h[1:12] = h[1:12] + BLSS.t * ∇Post_unit[ 1:12]
-        new_Q[1:12] = Q[1:12] + BLSS.t * ∇Post_unit[13:24]
- 
-        repeat_fill!(new_h, new_h[1:12])
-        repeat_fill!(new_Q, new_Q[1:12])
-        new_ϵ_from_new_hQ, new_Post_from_new_hQ = getϵandϵ2avg(h=new_h, θ=θ, θ_p1=θ_p1, S_ph=S_ph, B_ph=B_ph, Q=new_Q)
-        new_Post_from_new_hQ *= -1.0 
-
-        new_Post_from_taylor = Post + BLSS.α * BLSS.t * ∇Post_len
-
-
-        if new_Post_from_new_hQ < new_Post_from_taylor
-            BLSS.t *= BLSS.β
-        else
-            #BLSS.t /= BLSS.β
-            h[1:12] = new_h[1:12]
-            Q[1:12] = new_Q[1:12]
-            if_update = true
-        end
-        if k == BLSS.N
-        @printf("Iter: %d. Update? %s. Post: %f, ΔPost_from_new_hQ: %f, ΔPost_from_taylor: %f, BLSS.t: %.2e, ∇Post_len: %f\n",
-            k,
-            (if_update) ? "YES" : "NO",
-            Post,
-            new_Post_from_new_hQ - Post,
-            new_Post_from_taylor - Post,
-            BLSS.t,
-            ∇Post_len
-	)
-        end
-        #println(Q[1:12]) 
+    for i=1:N, j=1:12
+        ∇ϵ[i, j] = ( - δ[j, i] * θ[i] + δ_p1[j, i] * θ_p1[i] ) / dt
     end
+    #=
+    for i=1:N, j=1:12
+        ∇ϵ[i, j+12] = - δ_mid[j, i]
+    end
+    =#
 
-    return h[1:12], Q[1:12], iter_count
+    g  = ∇ϵ' * ϵ
+    ∇g = ∇ϵ' * ∇ϵ 
+
+    return g, ∇g  
 end
-
-
-
-
-
-N       = Int((nyrs-2) * 12) # Discard the first and last year
-beg_t   = Int(13)            # Jan of second year
-
-output_h  = zeros(dtype, length(rlons), length(rlats), 12)
-output_Q = copy(output_h)
-output_converge = zeros(dtype, length(rlons), length(rlats))
-
-dt2 = 2.0 * dt
-
-# Construct δ* function
-Δ = (i, j) -> (i == (mod(j-1, 12) + 1)) ? 1 : 0
-δ    = zeros(dtype, 12, N)
-δ_p1 = copy(δ)
-
-for k=1:12, i=1:N
-    δ[k, i]    = Δ(k, i  )
-    δ_p1[k, i] = Δ(k, i+1)
-end
-
-
-# Gradient Descent method parameters
-BLSS = BacktrackingLineSearchStruct(
-    N = 100000,
-    α = 0.1,
-    β = 0.8,
-    t = 1000.0,
-    η = 1e-3
-)
 
 
 # Assign h and Q initial condition
@@ -150,19 +83,30 @@ fn_HQ_REAL = joinpath(data_path, "LR_halfgrid_hQ_fit.jl.nc")
 output_h = ncread(fn_HQ_REAL, "h") 
 output_Q = ncread(fn_HQ_REAL, "Q")
 
+println("## Linear Regression h")
+println(output_h[iii, jjj, :])
+println("## Linear Regression Q")
+println(output_Q[iii, jjj, :] )
+println("## Linear Regression Q(i+1/2)")
+println((output_Q[iii,jjj,:] + circshift(output_Q[iii, jjj, :], -1)) / 2.0)
+
+output_h .*= rand(size(output_h)...) * 0.0 
+output_Q .*= rand(size(output_h)...) * 0.0
 
 
 rng1 = collect(beg_t : beg_t + (N-1))
 rng2 = rng1 .+ 1
 
-# For each grid point
+h_long_vec = zeros(dtype, N)
+Q_long_vec = zeros(dtype, N)
+x0 = zeros(dtype, 24)
 for i = 1:length(rlons), j = 1:length(rlats)
 
 #    if j == 1
 #        @printf("Doing lon[%d]: %.1f\n", i, rlons[i])
 #    end
 
-    if i != 125 || j != 137
+    if i != iii || j != jjj
         continue
     end
 
@@ -171,34 +115,48 @@ for i = 1:length(rlons), j = 1:length(rlats)
         continue
     end
 
-
-    h_init = output_h[i, j, 1:12]
-    Q_init = output_Q[i, j, 1:12]
-
-
     _S_ph = (S[i, j, rng1] + S[i, j, rng2]) / 2.0
     _B_ph = (B[i, j, rng1] + B[i, j, rng2]) / 2.0
     _θ    = θ[i, j, rng1]
     _θ_p1 = θ[i, j, rng2]
 
+    _g_and_∇g = function(x)
+        h_long_vec[1:12] = x[ 1:12]
+        Q_long_vec[1:12] = x[13:24]
+        return g_and_∇g(
+            h = h_long_vec,
+            Q = Q_long_vec,
+            θ = _θ,
+            θ_p1 = _θ_p1,
+            S_ph = _S_ph,
+            B_ph = _B_ph
+        )
+    end
 
-    output_h[i, j, :], output_Q[i, j, :], iter_count = GDM( 
-        h_init = h_init,
-        Q_init = Q_init,
-        θ      = _θ,
-        θ_p1   = _θ_p1,
-        S_ph   = _S_ph,
-        B_ph   = _B_ph
+    global x0
+    x0[ 1:12] = output_h[i, j, :] 
+    x0[13:24] = output_Q[i, j, :] 
+
+    x_opt = Newton(
+        g_and_∇g = _g_and_∇g,
+        η        = η,
+        x0       = x0,
+        max      = 1000
     )
 
+    output_h[i, j, :] = x_opt[ 1:12]
+    output_Q[i, j, :] = x_opt[13:24]
 end
 
 
-println(rlons[125], "  ", rlats[137])
+#println(rlons[125], "  ", rlats[137])
 println("## h")
-println(output_h[125, 137, :])
+println(output_h[iii, jjj, :])
 println("## Q")
-println(output_Q[125, 137, :] * Q_scale)
+println(output_Q[iii, jjj, :] )
+println("## Linear Regression Q(i+1/2)")
+println((output_Q[iii,jjj,:] + circshift(output_Q[iii, jjj, :], -1)) / 2.0)
+
 
 
 missing_places_year   = missing_places[:, :, 1:12]
