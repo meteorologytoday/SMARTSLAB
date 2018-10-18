@@ -15,7 +15,7 @@ function Newton(;
     for i = 1:max
         g, ∇g = g_and_∇g(x)
         Δx = - ∇g \ g
-        println(x)
+        #println(x)
         if (Δx' * Δx)^0.5 >= η
             x += Δx
         else

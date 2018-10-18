@@ -4,6 +4,7 @@ include("Newton.jl")
 
 using NetCDF
 using LinearAlgebra
+using Statistics
 
 iii = 168
 jjj = 46
@@ -14,7 +15,8 @@ N       = Int((nyrs-2) * 12) # Discard the first and last year
 beg_t   = Int(13)            # Jan of second year
 
 output_h  = zeros(dtype, length(rlons), length(rlats), 12)
-output_Q = copy(output_h)
+output_Q  = copy(output_h)
+output_θd = copy(output_h) .+ 273.15
 output_converge = zeros(dtype, length(rlons), length(rlats))
 
 dt2 = 2.0 * dt
@@ -32,12 +34,25 @@ for k=1:12, i=1:N
 end
 γ = (δ_p1 - δ) / dt
 
-α = 1e6
-β = 1.0
 
-Λ_func   = x -> 1.0 + β / 2.0 * (tanh(α * x) - 1.0)
-∂Λ_func  = x -> α * β * (sech(α*x)^2.0)  / 2.0
-∂∂Λ_func = x -> - α^2.0 * β * (sech(α*x)^2.0) * tanh(α*x)
+
+Λ_func   = (x, a, b) -> 1.0 + b / 2.0 * (tanh(x/a) - 1.0)
+∂Λ_func  = (x, a, b) -> b / a * (sech(x/a)^2.0)  / 2.0
+∂∂Λ_func = (x, a, b) -> - (b / a^2.0)  * (sech(x/a)^2.0) * tanh(x/a)
+
+ab_pairs = [
+    [1e-5, 0.00],
+    [1e-5, 0.25],
+    [1e-5, 0.30],
+    [1e-5, 0.35],
+    [1e-5, 0.40],
+    [1e-5, 0.45],
+    [1e-5, 0.50],
+    [1e-5, 0.75],
+    [1e-5, 1.00],
+    [.5e-5, 1.00],
+    [1e-6, 1.00],
+]
 
 
 
@@ -67,7 +82,7 @@ end
 #end
 
 
-function g_and_∇g(;h, Q_ph, θ, θ_p1, S_ph, B_ph)
+function g_and_∇g(;h, Q_ph, θ, θ_p1, S_ph, B_ph, a, b)
 
     repeat_fill!(h, h[1:12])
     repeat_fill!(Q_ph, Q_ph[1:12])
@@ -76,9 +91,9 @@ function g_and_∇g(;h, Q_ph, θ, θ_p1, S_ph, B_ph)
 
     ∂h∂t = (h_p1 - h) / dt
 
-    Λ   =   Λ_func.(∂h∂t)
-    ∂Λ  =  ∂Λ_func.(∂h∂t)
-    ∂∂Λ = ∂∂Λ_func.(∂h∂t)
+    Λ   =   Λ_func.(∂h∂t, a, b)
+    ∂Λ  =  ∂Λ_func.(∂h∂t, a, b)
+    ∂∂Λ = ∂∂Λ_func.(∂h∂t, a, b)
     
     #println(Λ)   
     #println(∂Λ)   
@@ -102,11 +117,11 @@ function g_and_∇g(;h, Q_ph, θ, θ_p1, S_ph, B_ph)
     ∇g = ∇ϵ' * ∇ϵ
 
     # Add ϵ ∂^2ϵ/∂h^2 to ∇g
-    for i=1:12, j=1:12
-        ∇g[i, j] += sum(
-            ϵ .* γ[j, :] .* γ[i, :] .* θ_p1 .* (2.0 * ∂Λ - ∂∂Λ .* ∂h∂t)
-        )
-    end
+#    for i=1:12, j=1:12
+#        ∇g[i, j] += sum(
+#            ϵ .* γ[j, :] .* γ[i, :] .* θ_p1 .* (2.0 * ∂Λ - ∂∂Λ .* ∂h∂t)
+#        )
+#    end
 
     return g, ∇g 
 end
@@ -131,7 +146,7 @@ rng2 = rng1 .+ 1
 
 h_long_vec = zeros(dtype, N)
 Q_long_vec = zeros(dtype, N)
-x0 = zeros(dtype, 24)
+x_mem = zeros(dtype, 24)
 for i = 1:length(rlons), j = 1:length(rlats)
 
 #    if j == 1
@@ -149,35 +164,54 @@ for i = 1:length(rlons), j = 1:length(rlats)
 
     _S_ph = (S[i, j, rng1] + S[i, j, rng2]) / 2.0
     _B_ph = (B[i, j, rng1] + B[i, j, rng2]) / 2.0
-    _θ    = θ[i, j, rng1]
-    _θ_p1 = θ[i, j, rng2]
 
-    _g_and_∇g = function(x)
-        h_long_vec[1:12] = x[ 1:12]
-        Q_long_vec[1:12] = x[13:24]
-        return g_and_∇g(
-            h = h_long_vec,
-            Q_ph = Q_long_vec,
-            θ = _θ,
-            θ_p1 = _θ_p1,
-            S_ph = _S_ph,
-            B_ph = _B_ph
+    _θd   = _S_ph * 0.0
+    _θd[1:12] .= 273.15
+    repeat_fill!(_θd, _θd[1:12])
+
+    _θ    = θ[i, j, rng1] - _θd
+    _θ_p1 = θ[i, j, rng2] - _θd
+
+    global x_mem
+    x_mem[ 1:12] = output_h[i, j, :] 
+    x_mem[13:24] = output_Q[i, j, :] 
+
+
+    # Gradually change entrainment condition
+    for i in 1:size(ab_pairs)[1]
+        println("Now we are doing ab_pair: ", ab_pairs[i])
+        println(x_mem)
+        _g_and_∇g = function(x)
+            h_long_vec[1:12] = x[ 1:12]
+            Q_long_vec[1:12] = x[13:24]
+            return g_and_∇g(
+                h = h_long_vec,
+                Q_ph = Q_long_vec,
+                θ = _θ,
+                θ_p1 = _θ_p1,
+                S_ph = _S_ph,
+                B_ph = _B_ph,
+                a    = ab_pairs[i][1],
+                b    = ab_pairs[i][2]
+            )
+        end
+
+
+        x_mem[:] = Newton(
+            g_and_∇g = _g_and_∇g,
+            η        = η,
+            x0       = x_mem,
+            max      = 1000
         )
+
+        println((x_mem[2:12] - x_mem[1:11]) / dt)
+ 
+        println("Q std: ", std(x_mem[13:24]))
     end
 
-    global x0
-    x0[ 1:12] = output_h[i, j, :] 
-    x0[13:24] = output_Q[i, j, :] 
+    output_h[i, j, :] = x_mem[ 1:12]
+    output_Q[i, j, :] = x_mem[13:24]
 
-    x_opt = Newton(
-        g_and_∇g = _g_and_∇g,
-        η        = η,
-        x0       = x0,
-        max      = 1000
-    )
-
-    output_h[i, j, :] = x_opt[ 1:12]
-    output_Q[i, j, :] = x_opt[13:24]
 end
 
 
