@@ -19,7 +19,7 @@ output_converge = zeros(dtype, length(rlons), length(rlats))
 
 dt2 = 2.0 * dt
 
-η = 1e-3
+η = 1e-5
 
 # Construct δ* function
 Δ = (i, j) -> (i == (mod(j-1, 12) + 1)) ? 1 : 0
@@ -32,11 +32,12 @@ for k=1:12, i=1:N
 end
 γ = (δ_p1 - δ) / dt
 
-α = 1.0
-α2 = α^2.0
-Λ_func   = x -> (1.0 + tanh(α * x)) / 2.0
-∂Λ_func  = x -> α  * (sech(α*x)^2.0)  / 2.0
-∂2Λ_func = x -> - α2 * (sech(α*x)^2.0) * tanh(α*x)
+α = 1e6
+β = 1.0
+
+Λ_func   = x -> 1.0 + β / 2.0 * (tanh(α * x) - 1.0)
+∂Λ_func  = x -> α * β * (sech(α*x)^2.0)  / 2.0
+∂∂Λ_func = x -> - α^2.0 * β * (sech(α*x)^2.0) * tanh(α*x)
 
 
 
@@ -59,6 +60,13 @@ for i=1:N, j=1:12
     ∇ϵ[i, j+12] = - δ[j, i]
 end
 
+#∇∇ϵ = zeros(dtype, N, 24, 24)
+#for i=1:N, j=1:24, k=1:24
+#    if 
+#    ∇∇ϵ[i, j, k] = - δ[j, i]
+#end
+
+
 function g_and_∇g(;h, Q_ph, θ, θ_p1, S_ph, B_ph)
 
     repeat_fill!(h, h[1:12])
@@ -68,21 +76,37 @@ function g_and_∇g(;h, Q_ph, θ, θ_p1, S_ph, B_ph)
 
     ∂h∂t = (h_p1 - h) / dt
 
-    Λ  =  Λ_func.(∂h∂t)
-    ∂Λ = ∂Λ_func.(∂h∂t)
+    Λ   =   Λ_func.(∂h∂t)
+    ∂Λ  =  ∂Λ_func.(∂h∂t)
+    ∂∂Λ = ∂∂Λ_func.(∂h∂t)
     
-    ϵ =  h    / d2t .* ( θ_p1 .* (1.0 .- Λ) - θ .* (1.0 .+ Λ) )
-       + h_p1 / d2t .* ( θ_p1 .* (1.0 .+ Λ) - θ .* (1.0 .- Λ) )
-       - S_ph - B_ph - Q_ph
+    #println(Λ)   
+    #println(∂Λ)   
+    #println(∂∂Λ)   
+ 
+    ϵ =  (
+        h    / dt2 .* ( θ_p1 .* (1.0 .- Λ) - θ .* (1.0 .+ Λ) )
+        + h_p1 / dt2 .* ( θ_p1 .* (1.0 .+ Λ) - θ .* (1.0 .- Λ) )
+        - S_ph - B_ph - Q_ph
+    )
 
     for i=1:N, j=1:12
-        ∇ϵ[i, j] =  δ[j, i]    / d2t * ( θ_p1[i] * (1.0 - Λ[i]) - θ[i] * (1.0 + Λ[i]) )
-                  + δ_p1[j, i] / d2t * ( θ_p1[i] * (1.0 + Λ[i]) - θ[i] * (1.0 - Λ[i]) )
-                  + ∂h∂t * (θ[i] + θ_p1[i]) / 2.0 * γ[j, i] * ∂Λ[i]
+        ∇ϵ[i, j] =  (
+            δ[j, i]    / dt2 * ( θ_p1[i] * (1.0 - Λ[i]) - θ[i] * (1.0 + Λ[i]) )
+            + δ_p1[j, i] / dt2 * ( θ_p1[i] * (1.0 + Λ[i]) - θ[i] * (1.0 - Λ[i]) )
+            + ∂h∂t[i] * (θ[i] + θ_p1[i]) / 2.0 * γ[j, i] * ∂Λ[i]
+        )
     end
 
     g  = ∇ϵ' * ϵ
     ∇g = ∇ϵ' * ∇ϵ
+
+    # Add ϵ ∂^2ϵ/∂h^2 to ∇g
+    for i=1:12, j=1:12
+        ∇g[i, j] += sum(
+            ϵ .* γ[j, :] .* γ[i, :] .* θ_p1 .* (2.0 * ∂Λ - ∂∂Λ .* ∂h∂t)
+        )
+    end
 
     return g, ∇g 
 end
@@ -91,17 +115,15 @@ end
 # Assign h and Q initial condition
 fn_HQ_REAL = joinpath(data_path, "LR_halfgrid_hQ_fit.jl.nc")
 output_h = ncread(fn_HQ_REAL, "h") 
-output_Q = ncread(fn_HQ_REAL, "Q")
+output_Q = ncread(fn_HQ_REAL, "Q_Delta")
 
 println("## Linear Regression h")
 println(output_h[iii, jjj, :])
 println("## Linear Regression Q")
 println(output_Q[iii, jjj, :] )
-println("## Linear Regression Q(i+1/2)")
-println((output_Q[iii,jjj,:] + circshift(output_Q[iii, jjj, :], -1)) / 2.0)
 
-output_h .*= rand(size(output_h)...) * 0.0 
-output_Q .*= rand(size(output_h)...) * 0.0
+#output_h .*= rand(size(output_h)...) * 0.0 
+#output_Q .*= rand(size(output_h)...) * 0.0
 
 
 rng1 = collect(beg_t : beg_t + (N-1))
@@ -135,7 +157,7 @@ for i = 1:length(rlons), j = 1:length(rlats)
         Q_long_vec[1:12] = x[13:24]
         return g_and_∇g(
             h = h_long_vec,
-            Q = Q_long_vec,
+            Q_ph = Q_long_vec,
             θ = _θ,
             θ_p1 = _θ_p1,
             S_ph = _S_ph,
@@ -164,8 +186,6 @@ println("## h")
 println(output_h[iii, jjj, :])
 println("## Q")
 println(output_Q[iii, jjj, :] )
-println("## Linear Regression Q(i+1/2)")
-println((output_Q[iii,jjj,:] + circshift(output_Q[iii, jjj, :], -1)) / 2.0)
 
 
 

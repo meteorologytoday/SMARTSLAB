@@ -48,8 +48,7 @@ for i = 1:length(rlons), j = 1:length(rlats)
         ϕ[t, mod12(t+1)] =   θ[i, j, (beg_t + t - 1) + 1] / dt
 
         # ϕ_Q
-        ϕ[t, 12 + mod12(t  )] =  - .5
-        ϕ[t, 12 + mod12(t+1)] =  - .5
+        ϕ[t, 12 + mod12(t  )] =  - 1.0
 
     end
 
@@ -121,8 +120,8 @@ for obj in [
 
         )
     ], [
-        β[:, :, 13:24], "Q", Dict(
-            "long_name"=>"Q-flux",
+        β[:, :, 13:24], "Q_Delta", Dict(
+            "long_name"=>"Q-flux in middle of month",
             "units"=>"W / m^2",
             "_FillValue" => missing_value,
             "missing_value" => missing_value
