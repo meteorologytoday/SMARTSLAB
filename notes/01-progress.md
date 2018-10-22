@@ -8,6 +8,9 @@
 - I said total_downward_heat_flux is not the same as i thought, prove it.
 - Francois: What is the difference between T_{i+1} - T_{i-1} vs T_{i+1} - T_{i}
 
+- Understand what processes are actually involved in GFDL ESM2M model
+- NCAR-CESM [Download Link](https://www.earthsystemgrid.org/search.html?Project=CMIP5&Experiment=piControl&Ensemble=r1i1p1&Model=CESM1-WACCM&Frequency=Monthly&Product=output1)
+
 
 # 2018-08-29
 - Pull out the number to see why places with sea-ice does not do well in simulation. It seems that modifying h so that h = 10m if it gets thinner or negative causes the problem.

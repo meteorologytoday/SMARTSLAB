@@ -1,9 +1,11 @@
 include("config.jl")
 include("NetCDFHelper.jl")
 include("Newton.jl")
+include("BacktrackingLineSearchStruct.jl")
 
 using NetCDF
 using LinearAlgebra
+using Statistics
 
 iii = 168
 jjj = 46
@@ -206,7 +208,7 @@ for i = 1:length(rlons), j = 1:length(rlats)
 
         println((x_mem[2:12] - x_mem[1:11]) / dt)
  
-        println("Q mag: ", (sum(x_mem[13:24].^2.0) / 24.0) ^.5)
+        println("Q std: ", std(x_mem[13:24]))
     end
 
     output_h[i, j, :] = x_mem[ 1:12]
