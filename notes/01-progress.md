@@ -12,6 +12,11 @@
 - NCAR-CESM [Download Link](https://www.earthsystemgrid.org/search.html?Project=CMIP5&Experiment=piControl&Ensemble=r1i1p1&Model=CESM1-WACCM&Frequency=Monthly&Product=output1)
 
 
+# 2018-10-24
+- Things to finish this week: (1) try using 4096 method. (2) Doing the same for EC-Earth and NCAR-CESM (3) using STAN for a simple case
+
+
+
 # 2018-08-29
 - Pull out the number to see why places with sea-ice does not do well in simulation. It seems that modifying h so that h = 10m if it gets thinner or negative causes the problem.
 
