@@ -1,24 +1,12 @@
-include("core.jl")
+include("../01_config/constants.jl")
+include("core/KT_core.jl")
+
 using Printf
-function prtArr(A)
-    for i = 1:size(A)[1]
-        for j = 1:size(A)[2]
-
-            @printf("%.1f ", A[i,j]) 
-
-        end
-        @printf("\n")
-    end
-end
-
-
-ρ    = 1027.0  # kg / m^3
-c_p  = 3985.0  # J / kg / K
 
 dtype = typeof(ρ)
 
 
-years = 10
+years = 20
 months_per_year = 12
 pts_per_month = 10
 pts_per_year = months_per_year * pts_per_month
@@ -118,22 +106,5 @@ LR_h, LR_Q = LR_shallow_water(
 
 
 LR_h = extend(LR_h, length(t_year))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

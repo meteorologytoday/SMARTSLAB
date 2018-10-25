@@ -4,6 +4,7 @@ using Printf
 @printf("# Running %s\n", basename(@__FILE__))
 
 include("models.jl")
+include("constants.jl")
 
 dtype = Float64
 data_path = joinpath(dirname(@__FILE__), "..", "..", "data")
@@ -60,9 +61,6 @@ function prtArr(A)
     end
 end
 
-
-ρ    = 1027.0  # kg / m^3
-c_p  = 3985.0  # J / kg / K
 
 mon_secs = 365.0 / 12.0 * 86400.0
 Δt  = 1.0 * mon_secs

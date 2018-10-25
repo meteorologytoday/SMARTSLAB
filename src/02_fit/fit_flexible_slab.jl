@@ -2,7 +2,7 @@ include("../01_config/general_config.jl")
 include("config.jl")
 
 include("../lib/NetCDFHelper.jl")
-include("LR_flexible_slab_core.jl")
+include("./core/LR_flexible_slab_core.jl")
 
 
 β     = zeros(dtype, lon_len, lat_len, 24)
