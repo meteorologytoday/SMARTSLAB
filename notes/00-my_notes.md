@@ -3,6 +3,9 @@
 - [Mixed-layer Depth and( Q-flux Numerical Calculation](https://www.sharelatex.com/read/ffhwmpjxwbht)
 
 
+# Notes on grid transformation
+- NCL : [rcm2rgrid] (https://www.ncl.ucar.edu/Document/Functions/Built-in/rcm2rgrid.shtml)
+
 
 # Notes on different Models
 

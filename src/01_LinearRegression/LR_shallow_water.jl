@@ -1,5 +1,3 @@
-
-
 function LR_shallow_water(;
     years        :: Integer,
     pts_per_year :: Integer,
