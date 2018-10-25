@@ -18,8 +18,7 @@ function f(;
     ∂h∂t    :: TYPE,
 ) where TYPE <: AbstractFloat
 
-    #Λ = (∂h∂t > 0.0) ? 1.0 : 0
-    Λ = 0.0
+    Λ = (∂h∂t > 0.0) ? 1.0 : 0
     return (S * (1.0 - exp(-β * h)) + B - (θs - θd) * ∂h∂t * Λ) / h
 
 end

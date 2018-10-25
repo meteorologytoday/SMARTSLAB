@@ -1,18 +1,28 @@
-function LR_shallow_water(;
-    years        :: Integer,
+function LR_shallow_water!(;
     pts_per_year :: Integer,
     F            :: Array{T},
     θ            :: Array{T},
     Δt           :: T,
+    ϕ = 0
 ) where T <: AbstractFloat
 
+
+if mod(length(F), pts_per_year) != 0
+    throw(ArgumentError("Data length should be multiple of [pts_per_year]"))
+end
+
+years = Int(length(F) / pts_per_year)
 
 N       = (years-2) * pts_per_year      # Discard the first and last year
 beg_t   = pts_per_year + 1              # Jan of second year
 
 params  = pts_per_year * 2
 
-ϕ = zeros(dtype, N, params)             # for h and Q
+if ϕ == 0
+    ϕ = zeros(dtype, N, params)             # for h and Q
+elseif  (! isa(ϕ, Array{T,2})) || ( size(ϕ) != (N, params) )
+    throw(ArgumentError("ϕ is not the correct type or shape"))
+end
 
 mod_cycle(n) = mod(n-1, pts_per_year) + 1
 
@@ -21,6 +31,7 @@ rng2 = rng1 .+ 1
 
 ϕ .= 0.0
 
+#println(length(θ))
 for t = 1:N
 
     # ϕ_h

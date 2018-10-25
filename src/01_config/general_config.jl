@@ -16,11 +16,20 @@ model_fname_pattern = models[model_name]
 println("# Files on the list:")
 for varname in ["omlmax", "S", "B", "tos", "hfds"]
     fn[varname] = joinpath(data_path, (@eval @sprintf($model_fname_pattern, $varname)))
-    println("   ", fn[varname])
+    println("   ", fn[varname], " -- ", (isfile(fn[varname]) ? "EXISTS" : "MISSING"))
 end
 println()
 
-missing_value = convert(dtype, ncgetatt(fn["tos"], "tos", "missing_value"))
+missing_value = convert(dtype, ncgetatt(fn["tos"], "tos", "_FillValue"))
+
+function missing2nan!(x)
+    x[x .== missing_value] .= NaN
+end
+
+function nan2missing!(x)
+    x[isnan.(x)] .= missing_value
+end
+
 
 function readModelVar(varname, range_tuple=())
     local var
@@ -51,28 +60,29 @@ function prtArr(A)
     end
 end
 
+
 ρ    = 1027.0  # kg / m^3
 c_p  = 3985.0  # J / kg / K
 
 mon_secs = 365.0 / 12.0 * 86400.0
 Δt  = 1.0 * mon_secs
 
-# Decide how many data are used
-rng = Colon()
-rng = 1:120
-
 lon = ncread(fn["tos"], "lon")
 lat = ncread(fn["tos"], "lat")
 
-θ = readModelVar("tos", (:, :, rng)) * ρ * c_p
-println()
+lon_len = length(lon)
+lat_len = length(lat)
 
-months = size(θ)[3]
+
+months = length(ncread(fn["tos"], "time"))
 if months % 12 != 0
     error("There are $months months, not a multiple of 12")
 end
 
 years = Int(months / 12)
+N     = (years-2) * 12 # Discard the first and final year
+beg_t = 13
+
 
 println("# Data info")
 @printf("  Model  : %s\n", model_name)
