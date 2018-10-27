@@ -5,6 +5,7 @@ using Printf
 
 include("models.jl")
 include("constants.jl")
+include("regions.jl")
 
 dtype = Float64
 data_path = joinpath(dirname(@__FILE__), "..", "..", "data")

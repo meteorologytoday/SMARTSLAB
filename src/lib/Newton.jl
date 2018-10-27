@@ -1,4 +1,9 @@
-#using LinearAlgebra
+module NewtonMethod
+
+export NotConvergeException, Newton
+
+struct NotConvergeException <: Exception
+end
 
 function Newton(;
     #g  :: Function,             # Target function g which receives a vector
@@ -25,8 +30,10 @@ function Newton(;
     end
 
     if if_converge == false
-       throw(Excpetion("Not converge")) 
+       throw(NotConvergeException) 
     end
 
     return x
+end
+
 end
