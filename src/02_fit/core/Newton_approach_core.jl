@@ -119,9 +119,9 @@ function fit(;
     θd       :: T,
     ab_pairs,
     max,
-    η
+    η,
+    verbose  :: Bool = false
 ) where T <: AbstractFloat
-     
     if mod(length(θ), bundle.period) != 0
         throw(ArgumentError("Data length should be multiple of [pts_per_year]"))
     end
@@ -151,7 +151,9 @@ function fit(;
 
     # Gradually change entrainment condition
     for i in 1:size(ab_pairs)[1]
-        println("Now we are doing ab_pair: ", ab_pairs[i])
+        if verbose
+            println("Now we are doing ab_pair: ", ab_pairs[i])
+        end
         _g_and_∇g = function(x)
             h_long_vec[1:12] = x[ 1:12]
             Q_long_vec[1:12] = x[13:24]
@@ -173,7 +175,8 @@ function fit(;
             g_and_∇g = _g_and_∇g,
             η        = η,
             x0       = x_mem,
-            max      = 1000
+            max      = max,
+            verbose  = verbose
         )
 
         #println((x_mem[2:12] - x_mem[1:11]) / dt)

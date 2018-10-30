@@ -1,41 +1,42 @@
+include("general_config.jl")
 include("regions.jl")
-
+using PyPlot, PyCall
+@pyimport mpl_toolkits.basemap as basemap
 
 lat = collect(range(-90, stop=90, length=50))
 lon = collect(range(0, stop=360, length=100))
 
-using PyPlot, PyCall
-@pyimport mpl_toolkits.basemap as basemap
 
+plt[:figure](figsize=(12,10))
 m = basemap.Basemap(projection="merc",llcrnrlat=-80,urcrnrlat=80,
-            llcrnrlon=0,urcrnrlon=359,lat_ts=20,resolution="c",lon_0=180.0)
+            llcrnrlon=0,urcrnrlon=360,lat_ts=20,resolution="c",lon_0=180.0)
 
-m[:drawcoastlines](linewidth=0.5)
-#m[:fillcontinents](color="#ffffff", lake_color="aqua")
-m[:drawmeridians](collect(0:30:360))
-m[:drawparallels](collect(-90:30:90))
 
-m[:drawmapboundary](fill_color="aqua")
+lab_lons = collect(0:30:360)
+lab_lats = collect(-90:30:90)
 
+
+m[:drawcoastlines](linewidth=1.5)
+m[:fillcontinents](color="#888888", lake_color="aqua")
+m[:drawmeridians](lab_lons, labels=repeat([true, ], outer=(length(lab_lons),)))
+m[:drawparallels](lab_lats, labels=repeat([true, ], outer=(length(lab_lats),)))
+
+#m[:drawmapboundary](fill_color="aqua")
 #m[:scatter](190, 0, color="r", s=200, marker="o", latlon=true)
 
 for k in keys(regions)
-    for i=1:length(lat), j=1:length(lon)
-        if in_region(k, lat[i], lon[j])
-            
-            m[:scatter](m(lon[j], lat[i])... ,color="r", s=5, marker="o")
-        end
-    end
+    println("Region: ", k)
+    v = regions[k]
+    r = []
+    push!(r, m(v[1][1], v[2][1]))
+    push!(r, m(v[1][1], v[2][2]))
+    push!(r, m(v[1][2], v[2][2]))
+    push!(r, m(v[1][2], v[2][1]))
+
+    m[:plot]([r[1][1], r[2][1], r[3][1], r[4][1], r[1][1]], [r[1][2], r[2][2], r[3][2], r[4][2], r[1][2]], linewidth=1.0)
+    plt[:text]((r[1][1] + r[3][1])/2.0, (r[1][2] + r[2][2])/2.0, k, va="center", ha="center")
+
 end
 
-
-
-
+plt[:savefig](joinpath(img_path, "regions.png"), dpi=101)
 plt[:show]()
-
-#=
-x, y = map(rad2deg(lons), rad2deg(lats))
-
-        # Contour data over the map.
-cs = map[:contour](x, y, wave+mean, 15, latsinewidths=1.5)
-=#

@@ -1,6 +1,8 @@
+
+
 regions = Dict(
-    "NPAC-1" => ([185.0, 225.0], [ 10.0,  25.0]),
-    "NPAC-2" => ([185.0, 225.0], [ 25.0,  50.0]),
+    "NPAC-1" => ([150.0, 225.0], [ 10.0,  25.0]),
+    "NPAC-2" => ([150.0, 225.0], [ 25.0,  50.0]),
     "EPAC"   => ([215.0, 270.0], [-10.0,  10.0]),
     "WPAC"   => ([135.0, 215.0], [-10.0,  10.0]),
     "SPAC-1" => ([170.0, 255.0], [-25.0, -10.0]),
@@ -21,3 +23,33 @@ function in_region(name, lat, lon)
     lon_rng, lat_rng = regions[name]
     return lon_rng[1] <= lon && lon < lon_rng[2] && lat_rng[1] <= lat && lat < lat_rng[2] 
 end
+
+function meshgrid(x, y)
+    #=
+    xx = zeros(eltype(x), length(x), length(y))
+    yy = copy(xx)
+
+    for i = 1:length(x), j = 1:length(y)
+        xx[i, j] = x[i]
+        yy[i, j] = y[i]
+    end
+    =#
+
+    xx = repeat(x, outer=(1, length(y)))
+    yy = repeat(y, outer=(1, length(x)))'
+
+    return xx, yy
+end
+
+
+function region_mask(lon, lat, name)
+    llon,llat = meshgrid(lon, lat)
+    lon_rng, lat_rng = regions[name]
+
+    return (lon_rng[1] .<= llon      ) .& 
+           (llon       .<  lon_rng[2]) .&
+           (lat_rng[1] .<= llat      ) .&
+           (llat       .< lat_rng[2] )
+end
+
+

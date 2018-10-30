@@ -11,13 +11,17 @@ function Newton(;
     g_and_∇g  :: Function,       # Target function g and its Jacobian
     η  :: T,        # Threshold
     x0 :: Array{T, 1}, # Initial guess
-    max:: Integer               # Maximum iteration
+    max:: Integer,               # Maximum iteration
+    verbose::Bool=false
 ) where T <: AbstractFloat
 
     local x = x0 * 1.0
     local if_converge = false
 
     for i = 1:max
+        if verbose
+            println("Newton method iteration: ", i)
+        end
         g, ∇g = g_and_∇g(x)
         Δx = - ∇g \ g
         #println(x)
@@ -30,7 +34,7 @@ function Newton(;
     end
 
     if if_converge == false
-       throw(NotConvergeException) 
+       throw(NotConvergeException()) 
     end
 
     return x
