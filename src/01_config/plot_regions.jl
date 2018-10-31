@@ -1,7 +1,8 @@
-include("general_config.jl")
-include("regions.jl")
 using PyPlot, PyCall
 @pyimport mpl_toolkits.basemap as basemap
+
+include("general_config.jl")
+include("regions.jl")
 
 lat = collect(range(-90, stop=90, length=50))
 lon = collect(range(0, stop=360, length=100))
