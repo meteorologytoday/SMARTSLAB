@@ -99,13 +99,11 @@ function g_and_∇g(bundle; h, Q_ph, θ, θ_p1, S_ph, B_ph, a, b)
     ∇g = bundle.∇ϵ' * bundle.∇ϵ
 
     # Add ϵ ∂^2ϵ/∂h^2 to ∇g
-    #=
     for i=1:12, j=1:12
         ∇g[i, j] += sum(
-            ϵ .* γ[j, :] .* γ[i, :] .* θ_p1 .* (2.0 * ∂Λ - ∂∂Λ .* ∂h∂t)
+            ϵ .* bundle.γ[j, :] .* bundle.γ[i, :] .* θ_p1 .* (2.0 * ∂Λ - ∂∂Λ .* ∂h∂t)
         )
     end
-    =#
     return g, ∇g 
 end
 
