@@ -1,5 +1,7 @@
 import Pkg
 
-Pkg.add("NetCDF")
-Pkg.add("DataFrames")
-Pkg.add("CSV")
+Pkg.add("Formatting")
+Pkg.add("NCDatasets")
+Pkg.add("PyCall")
+Pkg.add("PyPlot")
+Pkg.add("JLD")
