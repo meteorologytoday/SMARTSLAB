@@ -1,4 +1,3 @@
-
 include("../01_config/constants.jl")
 include("./core/KT_core.jl")
 include("../02_fit/core/ab_training_toolkit.jl")
@@ -30,10 +29,9 @@ B = copy(S)
 S0 = 100.0
 for i = 1 : length(S)
     S[i] = S0 * sin(2π * t_year[i])
-    h[i] = 30.0 - 10.0 * sin(2π * t_year[i])
 end
 
-#h .= 30.0
+h .= 30.0
 
 S    = extend(S,    ret_len)
 B    = extend(B,    ret_len)
@@ -93,6 +91,10 @@ c0 = A + θs_init
 Ts_analytic = (- A * cos.(2π * t_year) .+ c0) / ρ / c_p
 
 omlmax = mean(reshape(h, 12, :); dims=(2,))
+avg_Ts          = mean(reshape(Ts, months_per_year, :); dims=(2,))
+avg_S           = mean(reshape(S, months_per_year, :); dims=(2,))
+avg_Ts_analytic = mean(reshape(Ts_analytic, months_per_year, :); dims=(2,))
+
 
 println("True omlmax: ", omlmax)
 println("Δt:  ", Δt)

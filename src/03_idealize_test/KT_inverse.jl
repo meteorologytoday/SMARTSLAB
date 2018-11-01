@@ -1,4 +1,4 @@
-include("KT_simulate.jl")
+
 
 # Fitting 
 
@@ -15,7 +15,6 @@ ab_pairs = Dict(
          1.0 0.00;
          1.0 0.00;
     ],
-
     "init_zero" => [
         1e-7 0.00;
         1e-7 0.50;

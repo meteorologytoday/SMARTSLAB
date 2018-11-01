@@ -1,16 +1,5 @@
 include("simulate.jl")
 
-
-
-
-
-
-
-
-
-
-
-
 using PyPlot
 
 fig, ax = plt[:subplots](3, 1, sharex=true, figsize=(12, 8))
