@@ -21,8 +21,10 @@
 
 
 
-# Notes on discovery
+# Notes on work
 
 ## Linear Regression
 
 - Constant h and non-constant h in shallow water linear regression may result in completely different inversion. Please run the code `07_analytic_test/plot.jl`. Through this test we know that wrong assumption to the model is critical.
+
+## Newtonian Fitting Formulation and Result ( [Link](https://www.overleaf.com/read/nhtyxqvdgjvr) )
