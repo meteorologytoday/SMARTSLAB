@@ -19,17 +19,18 @@ data {
 
 transformed data {
     int yrs;
-    int trimmed_N;
+    int<lower=2*period+1> trimmed_N = N - 2 * period;
     vector[trimmed_N] F_s;
     vector[trimmed_N] theta_s;
     vector[trimmed_N] dthetadt_s;
  
-    if(yrs % period != 0) {
+    if(N % period != 0) {
        reject("N = ", N, " is not multiple of ", period);
     }
     yrs = N / period;
 
-    trimmed_N = N - 2 * period;
+
+    //trimmed_N = N - 2 * period;
     
    
     for (i in 1:trimmed_N) {
@@ -47,11 +48,11 @@ transformed data {
 parameters {
     real<lower=0, upper=200> h[period];
     real Q_s[period];
-    real Td;
+    real<lower=270, upper=300> Td;
 }
 
-transformed parameters {
-    // suffix "_s" means staggered
+model{
+
     vector[trimmed_N] we_s;
     vector[trimmed_N] dhds_s;
     vector[trimmed_N] h_s;
@@ -78,11 +79,8 @@ transformed parameters {
     we_s   = repeat_fill(we_s, period, trimmed_N);
     h_s    = repeat_fill(h_s, period, trimmed_N);
 
-
     epsilon = h_s .* dthetadt_s + we_s .* (theta_s - Td) - F_s;
-}
 
-model{
     for(i in 1:trimmed_N) {
         epsilon[i] ~ normal(0, 1.0);
     }
