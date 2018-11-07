@@ -1,6 +1,7 @@
 *.swp
 *.swo
 *.nc
+img/
 *.png
 *.eps
 *.gz
