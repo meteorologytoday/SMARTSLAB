@@ -13,7 +13,7 @@ using Stan, Mamba
 model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
 
 @printf("Now we are going to build stan model...\n")
-nchains     = 10
+nchains     = 1
 num_samples = 1000
 stanmodel = Stanmodel(name="KT", nchains=nchains, num_samples=num_samples, model=model_script)
 display(stanmodel)
@@ -27,6 +27,10 @@ data = Dict()
 beg_time = Base.time()
 println("Start counting time...")
 for region_name in keys(regions)
+
+    if region_name != "SPAC-1"
+        #continue
+    end
 
     println("### Doing region: ", region_name)
 
@@ -63,6 +67,7 @@ for region_name in keys(regions)
 
     data_h = sim1[:, h_key, :].value
     data_Q = sim1[:, Q_key, :].value
+    data_Td = sim1[:, ["theta_d"], :].value / ρ / c_p
 
     for i = 1:12
         h_mean[i] = mean(data_h[:, i, :])
@@ -72,6 +77,8 @@ for region_name in keys(regions)
         Q_std[i]  = std(data_Q[:, i, :])
     end
 
+    Td_mean = mean(data_Td)
+    Td_std  = std(data_Td)
 
     using JLD
     filename = format("{}-{}-{}.jld", model_name, region_name, basename(@__FILE__))
@@ -79,10 +86,12 @@ for region_name in keys(regions)
     println("Output filename: ", filename)
     rm(filename, force=true)
     save(filename, Dict(
-        "h_mean" => h_mean,
-        "h_std"  => h_std,
+        "h_mean"   => h_mean,
+        "h_std"    => h_std,
         "Q_s_mean" => Q_mean,
         "Q_s_std"  => Q_std,
+        "Td_mean"  => Td_mean,
+        "Td_std"   => Td_std,
     ))
 
 end

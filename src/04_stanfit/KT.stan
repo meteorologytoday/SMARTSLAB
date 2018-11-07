@@ -48,7 +48,7 @@ transformed data {
 parameters {
     real<lower=0, upper=200> h[period];
     real Q_s[period];
-    real<lower=270, upper=300> Td;
+    real<lower=270*4000000, upper=300*4000000> theta_d;
 }
 
 model{
@@ -64,7 +64,6 @@ model{
     }
     h_s[period] = ( h[period] + h[1] ) / 2.0;
 
-
     // Calculate the change of MLD
     for(i in 1:period-1) {
         dhds_s[i] = (h[i+1] - h[i] ) / dt;
@@ -79,7 +78,10 @@ model{
     we_s   = repeat_fill(we_s, period, trimmed_N);
     h_s    = repeat_fill(h_s, period, trimmed_N);
 
-    epsilon = h_s .* dthetadt_s + we_s .* (theta_s - Td) - F_s;
+    #print(h_s[1:2*period])
+    #print(we_s[1:2*period])
+
+    epsilon = h_s .* dthetadt_s + we_s .* (theta_s - theta_d) - F_s;
 
     for(i in 1:trimmed_N) {
         epsilon[i] ~ normal(0, 1.0);
