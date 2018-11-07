@@ -25,14 +25,16 @@ for region_name in keys(regions)
     end
 
     model_d["tos"]["mean"] .-= 273.15
+    data["Td_mean"] -= 273.15
 
     t = collect(1:12)
 
     fig, ax = plt[:subplots](3, 1, figsize=(8,12), sharex=true)
 
     fig[:suptitle](
-        format("Ocean: {} \n \$T_d = {:.2f} \\pm {:.2f} \$",
+        format("Ocean: {} \n {}\$T_d = {:.2f} \\pm {:.2f} \$ deg C",
             region_name,
+            (data["Td_mean"] > minimum(model_d["tos"]["mean"])) ? "** " : "",
             data["Td_mean"],
             data["Td_std"]
         )
@@ -71,8 +73,8 @@ for region_name in keys(regions)
     ms=5
 
     # Plot tos and hfds
-    ln1 = ax[1][:errorbar](t, model_d["tos"]["mean"], yerr=model_d["tos"]["std"], color="k", linestyle="-", fmt="o", label="SST")
-    ln2 = ax1_twin[:errorbar](t, model_d["hfds"]["mean"], yerr=model_d["hfds"]["std"], color="r", dashes=(5,2), fmt="s", label="F")
+    ln1 = ax[1][:errorbar](t, model_d["tos"]["mean"], yerr=model_d["tos"]["std"], color="b", linestyle="-", fmt="o", label="SST", markerfacecolor="None")
+    ln2 = ax1_twin[:errorbar](t, model_d["hfds"]["mean"], yerr=model_d["hfds"]["std"], color="r", dashes=(5,2), fmt="s", label="F", markerfacecolor="None")
     
     ax[1][:legend]((ln1, ln2), ("SST", "F"))
      
@@ -88,11 +90,11 @@ for region_name in keys(regions)
     ax[3][:legend]()
 
     imgname = joinpath(img_path, format("stanfit_region_fit-{}-{}.png", model_name, region_name))
-#    @printf("Save image: %s  ...", imgname)
-#    fig[:savefig](imgname, dpi=100)
-#    println("done.")
+    @printf("Save image: %s  ...", imgname)
+    fig[:savefig](imgname, dpi=100)
+    println("done.")
 
-    plt[:show]()
+    #plt[:show]()
     plt[:close](fig)
 
 end

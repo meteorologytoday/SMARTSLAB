@@ -15,6 +15,8 @@ data {
     real<lower=0> dt;
     vector[N] theta;
     vector[N] F;
+    real<lower=0> epsilon_std;
+    real<lower=0> Q_std;
 }
 
 transformed data {
@@ -29,10 +31,6 @@ transformed data {
     }
     yrs = N / period;
 
-
-    //trimmed_N = N - 2 * period;
-    
-   
     for (i in 1:trimmed_N) {
         F_s[i]     = (F[i + period] + F[i + period + 1]) / 2.0;
         theta_s[i] = (theta[i + period] + theta[i + period + 1]) / 2.0;
@@ -53,10 +51,12 @@ parameters {
 
 model{
 
-    vector[trimmed_N] we_s;
+    // "_s" means staggered grid point
+
+    vector[trimmed_N] we_s;     // entrainment velocity
     vector[trimmed_N] dhds_s;
     vector[trimmed_N] h_s;
-    vector[trimmed_N] lambda;
+    vector[trimmed_N] q_s;
     vector[trimmed_N] epsilon;
 
     for(i in 1:period-1) {
@@ -73,17 +73,23 @@ model{
     // Entrainment condition
     for(i in 1:period) {
         we_s[i] = ( dhds_s[i] > 0 ) ? dhds_s[i] : 0;
+        q_s[i] = Q_s[i];
     }
 
     we_s   = repeat_fill(we_s, period, trimmed_N);
     h_s    = repeat_fill(h_s, period, trimmed_N);
+    q_s    = repeat_fill(q_s, period, trimmed_N);
 
-    #print(h_s[1:2*period])
-    #print(we_s[1:2*period])
+    epsilon = h_s .* dthetadt_s + we_s .* (theta_s - theta_d) - F_s - q_s;
 
-    epsilon = h_s .* dthetadt_s + we_s .* (theta_s - theta_d) - F_s;
-
-    for(i in 1:trimmed_N) {
-        epsilon[i] ~ normal(0, 1.0);
+    // Prior of Q
+    for(i in 1:period) {
+        Q_s[i] ~ normal(0, Q_std);
     }
+
+    // Likelihood
+    for(i in 1:trimmed_N) {
+        epsilon[i] ~ normal(0, epsilon_std);
+    }
+
 }

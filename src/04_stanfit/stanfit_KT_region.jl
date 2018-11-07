@@ -1,3 +1,5 @@
+program_beg_time = Base.time()
+
 include("../01_config/general_config.jl")
 include("../01_config/regions.jl")
 
@@ -23,15 +25,14 @@ h_key = [ format("h.{}", i) for i = 1:12 ]
 Q_key = [ format("Q_s.{}", i) for i = 1:12 ]
 
 data = Dict()
+time_stat = Dict()
 
-beg_time = Base.time()
-println("Start counting time...")
 for region_name in keys(regions)
 
     if region_name != "SPAC-1"
         #continue
     end
-
+    beg_time = Base.time()
     println("### Doing region: ", region_name)
 
     # Read model omlmax
@@ -44,11 +45,13 @@ for region_name in keys(regions)
     N = length(θ) 
 
     data = Dict(
-       "N"       => N, 
-       "period"  => 12, 
-       "dt"      => Δt, 
-       "theta"   => θ, 
-       "F"       => F,
+        "N"           => N, 
+        "period"      => 12, 
+        "dt"          => Δt, 
+        "theta"       => θ, 
+        "F"           => F,
+        "epsilon_std" => 10.0,
+        "Q_std"       => 100.0,
     )
 
     println("Doing STAN...")
@@ -77,6 +80,9 @@ for region_name in keys(regions)
         Q_std[i]  = std(data_Q[:, i, :])
     end
 
+    time_stat[region_name] = Base.time() - beg_time
+    println(format("Region {} took {.2f} min to do STAN fit.", region_name, time_stat[region_name] / 60.0 ))
+
     Td_mean = mean(data_Td)
     Td_std  = std(data_Td)
 
@@ -96,10 +102,12 @@ for region_name in keys(regions)
 
 end
 
-end_time = Base.time()
+program_end_time = Base.time()
+
+
 
 @printf("Total time used: %.2f min for %d regions, with nchains = %d, num_samples = %d\n",
-    (end_time-beg_time)/ 60.0,
+    (program_end_time-program_beg_time)/ 60.0,
     length(keys(regions)),
     nchains,
     num_samples
