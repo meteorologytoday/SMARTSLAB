@@ -85,7 +85,6 @@ for region_name in keys(regions)
         "Q_s_std"  => Q_std,
     ))
 
-    break
 end
 
 end_time = Base.time()
