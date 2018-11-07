@@ -13,7 +13,7 @@ using Stan, Mamba
 model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
 
 @printf("Now we are going to build stan model...\n")
-nchains     = 1
+nchains     = 10
 num_samples = 1000
 stanmodel = Stanmodel(name="KT", nchains=nchains, num_samples=num_samples, model=model_script)
 display(stanmodel)

@@ -8,7 +8,7 @@ include("../01_config/general_config.jl")
 
 for region_name in keys(regions)
     if region_name != "SPAC-1"
-        continue
+#        continue
     end
     # Reading data
 
@@ -45,16 +45,16 @@ for region_name in keys(regions)
     ax[3][:set_xlim](0, 13)
     ax[3][:set_xticks](t)
 
-    ax[1][:set_ylim](-5, 35)
-    ax1_twin[:set_ylim](-200, 200)
-    ax[2][:set_ylim](-10, 200)
-    ax[3][:set_ylim](-50, 50)
+    #ax[1][:set_ylim](-5, 35)
+    #ax1_twin[:set_ylim](-200, 200)
+    #ax[2][:set_ylim](-10, 200)
+    #ax[3][:set_ylim](-50, 50)
 
 
-    ax[1][:set_yticks](collect(-5:5:35))
-    ax1_twin[:set_yticks](collect(-200:50:200))
-    ax[2][:set_yticks](collect(0:20:200))
-    ax[3][:set_yticks](collect(-50:10:50))
+    #ax[1][:set_yticks](collect(-5:5:35))
+    #ax1_twin[:set_yticks](collect(-200:50:200))
+    #ax[2][:set_yticks](collect(0:20:200))
+    #ax[3][:set_yticks](collect(-50:10:50))
 
     ax[1][:grid](which="major", alpha=0.5)
     ax[2][:grid](which="major", alpha=0.5)
@@ -84,7 +84,7 @@ for region_name in keys(regions)
     ax[2][:legend]()
 
     # Plot Q flux
-    ax[3][:errorbar](t, data["Q_s_mean"], yerr=data["Q_s_std"], color="r", fmt="s", label="HMC")
+    ax[3][:errorbar](t, data["Q_s_mean"], yerr=data["Q_s_std"], color="r", linestyle="-", fmt="s", label="HMC")
     ax[3][:legend]()
 
     imgname = joinpath(img_path, format("stanfit_region_fit-{}-{}.png", model_name, region_name))
