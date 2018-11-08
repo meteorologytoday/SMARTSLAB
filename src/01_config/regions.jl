@@ -53,4 +53,6 @@ function region_mask(lon, lat, name)
            (llat       .< lat_rng[2] )
 end
 
-
+    for k in keys(regions)
+        println(k, " => ", regions[k])
+    end

@@ -83,9 +83,11 @@ model{
     epsilon = h_s .* dthetadt_s + we_s .* (theta_s - theta_d) - F_s - q_s;
 
     // Prior of Q
+    
     for(i in 1:period) {
         Q_s[i] ~ normal(0, Q_std);
     }
+    
 
     // Likelihood
     for(i in 1:trimmed_N) {

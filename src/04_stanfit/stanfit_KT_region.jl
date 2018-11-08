@@ -15,7 +15,7 @@ using Stan, Mamba
 model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
 
 @printf("Now we are going to build stan model...\n")
-nchains     = 10
+nchains     = 7
 num_samples = 1000
 stanmodel = Stanmodel(name="KT", nchains=nchains, num_samples=num_samples, model=model_script)
 display(stanmodel)
@@ -30,7 +30,7 @@ time_stat = Dict()
 for region_name in keys(regions)
 
     if region_name != "SPAC-1"
-        #continue
+        continue
     end
     beg_time = Base.time()
     println("### Doing region: ", region_name)
@@ -81,7 +81,7 @@ for region_name in keys(regions)
     end
 
     time_stat[region_name] = Base.time() - beg_time
-    println(format("Region {} took {.2f} min to do STAN fit.", region_name, time_stat[region_name] / 60.0 ))
+    println(format("Region {} took {:.2f} min to do STAN fit.", region_name, time_stat[region_name] / 60.0 ))
 
     Td_mean = mean(data_Td)
     Td_std  = std(data_Td)
