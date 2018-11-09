@@ -12,6 +12,10 @@
 - NCAR-CESM [Download Link](https://www.earthsystemgrid.org/search.html?Project=CMIP5&Experiment=piControl&Ensemble=r1i1p1&Model=CESM1-WACCM&Frequency=Monthly&Product=output1)
 
 
+# 2018-11-08
+- STAN program applied. Get pretty interesting result. Uncertainty of Q and h are trade-off. Meaning solid physical processes are missing
+- Now start to parallelize the STAN program in order to make a map distribution of data.
+
 # 2018-10-24
 - Things to finish this week: (1) try using 4096 method. (2) Doing the same for EC-Earth and NCAR-CESM (3) using STAN for a simple case
 
