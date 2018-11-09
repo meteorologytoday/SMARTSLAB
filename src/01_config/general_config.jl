@@ -8,7 +8,7 @@ include("constants.jl")
 include("regions.jl")
 
 dtype = Float64
-data_path = joinpath(dirname(@__FILE__), "..", "..", "data")
+data_path = joinpath(dirname(@__FILE__), "..", "..", "gpdata")
 img_path = joinpath(dirname(@__FILE__), "..", "..", "img")
 
 fn = Dict()
@@ -123,6 +123,7 @@ println("# Data info")
 @printf("  Model  : %s\n", model_name)
 @printf("  Length : %02d years.\n", years)
 println("  Data type: ", dtype)
+println("  Resolution: lon=", length(lon), "; lat=", length(lat), "; time=", length(time))
 println()
 
 println("# Constants")

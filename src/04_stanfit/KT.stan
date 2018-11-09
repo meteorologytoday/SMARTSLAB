@@ -22,6 +22,8 @@ data {
 transformed data {
     int yrs;
     int<lower=2*period+1> trimmed_N = N - 2 * period;
+    
+    // "_s" means staggered grid point
     vector[trimmed_N] F_s;
     vector[trimmed_N] theta_s;
     vector[trimmed_N] dthetadt_s;
@@ -59,10 +61,14 @@ model{
     vector[trimmed_N] q_s;
     vector[trimmed_N] epsilon;
 
+    vector[period] we_s_short;
+    vector[period] h_s_short;
+    vector[period] q_s_short;
+
     for(i in 1:period-1) {
-        h_s[i] = (h[i] + h[i+1] ) / 2.0;
+        h_s_short[i] = (h[i] + h[i+1] ) / 2.0;
     }
-    h_s[period] = ( h[period] + h[1] ) / 2.0;
+    h_s_short[period] = ( h[period] + h[1] ) / 2.0;
 
     // Calculate the change of MLD
     for(i in 1:period-1) {
@@ -72,13 +78,13 @@ model{
 
     // Entrainment condition
     for(i in 1:period) {
-        we_s[i] = ( dhds_s[i] > 0 ) ? dhds_s[i] : 0;
-        q_s[i] = Q_s[i];
+        we_s_short[i] = ( dhds_s[i] > 0 ) ? dhds_s[i] : 0;
+        q_s_short[i] = Q_s[i];
     }
 
-    we_s   = repeat_fill(we_s, period, trimmed_N);
-    h_s    = repeat_fill(h_s, period, trimmed_N);
-    q_s    = repeat_fill(q_s, period, trimmed_N);
+    we_s   = repeat_fill(we_s_short, period, trimmed_N);
+    h_s    = repeat_fill(h_s_short, period, trimmed_N);
+    q_s    = repeat_fill(q_s_short, period, trimmed_N);
 
     epsilon = h_s .* dthetadt_s + we_s .* (theta_s - theta_d) - F_s - q_s;
 
