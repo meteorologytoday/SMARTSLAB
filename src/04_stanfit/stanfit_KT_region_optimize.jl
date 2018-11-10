@@ -15,7 +15,7 @@ using Stan
 model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
 
 @printf("Now we are going to build stan model...\n")
-nchains     = 7
+nchains     = 1
 num_samples = 1000
 stanmodel = Stanmodel(
     Stan.Optimize();
@@ -42,8 +42,8 @@ for region_name in keys(regions)
     println("### Doing region: ", region_name)
 
     # Read model omlmax
-    omlmax = reshape(readModelRegionVar(region_name, "omlmax"), 12, :)
-    omlmax = mean(omlmax; dims=(2,))
+    tmp = reshape(readModelRegionVar(region_name, "omlmax"), 12, :)
+    omlmax = mean(tmp; dims=(2,)),
 
     # Generate region data
     θ = readModelRegionVar(region_name, "tos") * (ρ * c_p)
@@ -64,8 +64,11 @@ for region_name in keys(regions)
     rc, sim1 = stan(
         stanmodel,
         [data],
-        "tmp",
-        CmdStanDir=ENV["CMDSTAN_HOME"]
+        "tmp";
+        CmdStanDir = ENV["CMDSTAN_HOME"],
+        init = Dict(
+            "h" => omlmax
+        )
     )
 
     if rc != 0
