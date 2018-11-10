@@ -9,7 +9,7 @@ import Statistics.mean
 
 println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
 @printf("Importing Stan library...")
-using Stan, Mamba
+using Stan
 @printf("done\n")
 
 model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
