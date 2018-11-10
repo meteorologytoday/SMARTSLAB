@@ -36,19 +36,22 @@ time_stat = Dict()
 for region_name in keys(regions)
 
     if region_name != "SPAC-1"
-        continue
+#        continue
     end
     beg_time = Base.time()
     println("### Doing region: ", region_name)
 
     # Read model omlmax
     tmp = reshape(readModelRegionVar(region_name, "omlmax"), 12, :)
-    omlmax = mean(tmp; dims=(2,)),
+    omlmax = mean(tmp; dims=(2,))
 
     # Generate region data
     θ = readModelRegionVar(region_name, "tos") * (ρ * c_p)
     F = readModelRegionVar(region_name, "hfds")
     N = length(θ) 
+
+    #println(length(θ), ",", N)
+    #println(length(F), ",", N)
 
     data = Dict(
         "N"           => N, 
@@ -61,15 +64,22 @@ for region_name in keys(regions)
     )
 
     println("Doing STAN...")
-    rc, sim1 = stan(
-        stanmodel,
-        [data],
-        "tmp";
-        CmdStanDir = ENV["CMDSTAN_HOME"],
-        init = Dict(
-            "h" => omlmax
-        )
-    )
+    trial = 10
+    while(trial >= 0) 
+        try 
+            rc, sim1 = stan(
+                stanmodel,
+                [data],
+                "tmp";
+                CmdStanDir = ENV["CMDSTAN_HOME"],
+                init = Dict(
+                    "h" => omlmax,
+                    "Q_s" => omlmax * 0.0,
+                    "theta_d" => 273.0 * ρ * c_p
+                )
+            )
+        end
+    end
 
     if rc != 0
         println("There are errors!!")

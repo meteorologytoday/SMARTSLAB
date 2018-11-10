@@ -8,7 +8,7 @@ include("constants.jl")
 include("regions.jl")
 
 dtype = Float64
-data_path = joinpath(dirname(@__FILE__), "..", "..", "gpdata")
+data_path = joinpath(dirname(@__FILE__), "..", "..", "data")
 img_path = joinpath(dirname(@__FILE__), "..", "..", "img")
 
 fn = Dict()
@@ -75,7 +75,7 @@ function readModelRegionVar(region_name, varname, range_tuple=())
     var = convert(Array{dtype}, v)
     close(ds)
 
-    println("done.")
+    println("done. Size: ", size(v))
 
     return var
 end
