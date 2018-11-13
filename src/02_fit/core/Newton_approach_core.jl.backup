@@ -10,9 +10,55 @@ using ..NewtonMethod
 
 
 Λ_func   = (x, a, b) -> 1.0 + b / 2.0 * (tanh(x/a) - 1.0)
+∂Λ_func  = (x, a, b) -> b / a * (sech(x/a)^2.0)  / 2.0
+∂∂Λ_func = (x, a, b) -> - (b / a^2.0)  * (sech(x/a)^2.0) * tanh(x/a)
+
+Δ = (i, j, p) -> (i == (mod(j-1, p) + 1)) ? 1 : 0
 
 eucLen    = x -> (sum(x.^2.0))^(0.5)
 normalize = x -> x / eucLen(x)
+
+mutable struct Bundle{T<:AbstractFloat}
+    δ      :: Array{T, 2}
+    δ_p1   :: Array{T, 2}
+    γ      :: Array{T, 2}
+    ∇ϵ     :: Array{T, 2}
+    N      :: Integer
+    period :: Integer
+    beg_t  :: Integer
+    Δt     :: T
+    function Bundle(
+        dtype;
+        N::Integer,
+        period::Integer,
+        beg_t::Integer=period+1,
+        Δt
+    )
+
+        δ    = zeros(dtype, period, N)
+        δ_p1 = copy(δ)
+
+        for k=1:period, i=1:N
+            δ[k, i]    = Δ(k, i  , period)
+            δ_p1[k, i] = Δ(k, i+1, period)
+        end
+        γ = (δ_p1 - δ) / Δt
+
+        ∇ϵ = zeros(dtype, N, period*2)
+        for i=1:N, j=1:period
+            ∇ϵ[i, j+period] = - δ[j, i]
+        end
+
+        #∇∇ϵ = zeros(dtype, N, 24, 24)
+        #for i=1:N, j=1:24, k=1:24
+        #    if 
+        #    ∇∇ϵ[i, j, k] = - δ[j, i]
+        #end
+
+        new{dtype}(δ, δ_p1, γ, ∇ϵ, N, period, beg_t, convert(dtype, Δt))
+    end
+end
+
 
 function repeat_fill!(to::AbstractArray, fr::AbstractArray)
     len_fr = length(fr)
@@ -21,7 +67,7 @@ function repeat_fill!(to::AbstractArray, fr::AbstractArray)
     end 
 end
 
-function f_and_∇f(; h, Q_ph, θ, θ_p1, S_ph, B_ph, a, b)
+function g_and_∇g(bundle; h, Q_ph, θ, θ_p1, S_ph, B_ph, a, b)
     Δt2 = bundle.Δt * 2.0
 
     repeat_fill!(h, h[1:12])
@@ -30,7 +76,10 @@ function f_and_∇f(; h, Q_ph, θ, θ_p1, S_ph, B_ph, a, b)
     h_p1 = circshift(h, -1)
 
     ∂h∂t = (h_p1 - h) / bundle.Δt
+
     Λ   =   Λ_func.(∂h∂t, a, b)
+    ∂Λ  =  ∂Λ_func.(∂h∂t, a, b)
+    ∂∂Λ = ∂∂Λ_func.(∂h∂t, a, b)
     
     ϵ =  (
         h    / Δt2 .* ( θ_p1 .* (1.0 .- Λ) - θ .* (1.0 .+ Λ) )

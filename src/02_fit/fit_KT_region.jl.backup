@@ -130,3 +130,21 @@ for scenario in keys(ab_pairs)
     save(filename, data)
 
 end
+
+
+
+#=
+ds = Dataset(filename, "c")
+defDim(ds, "time", 12)
+defVar(ds, "time", Float64, ("time",))[:] = convert(Array{Float64, 1}, collect(1:12))
+
+for region_name in keys(regions)
+    for varname in ["h", "Q"]
+        d = data[region_name][varname]
+        new_varname = format("{}_{}", region_name, varname)
+        var = defVar(ds, new_varname, eltype(d), ("time",) ; fillvalue=missing_value)
+        var[:] = d
+    end
+end
+close(ds)
+=#

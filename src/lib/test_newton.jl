@@ -1,12 +1,12 @@
 include("Newton.jl")
 
+using Newton
 using LinearAlgebra
 
 g = x -> [2.0 * x[1] + 1, x[2]]
 Jg = x -> (I + zeros(2,2))  * 2.0
 
-
-ans = Newton(
+ans = Newton.fit(
     g  = g,
     Jg = Jg,
     η  = 1e-45,

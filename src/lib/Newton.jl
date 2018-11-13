@@ -5,7 +5,7 @@ export NotConvergeException, Newton
 struct NotConvergeException <: Exception
 end
 
-function Newton(;
+function fit(;
     #g  :: Function,             # Target function g which receives a vector
     #∇g :: Function,             # Jacobian of g which receives a vector
     g_and_∇g  :: Function,       # Target function g and its Jacobian
@@ -39,5 +39,6 @@ function Newton(;
 
     return x
 end
+
 
 end
