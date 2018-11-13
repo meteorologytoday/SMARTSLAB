@@ -1,14 +1,12 @@
-using LinearAlgebra
-using Statistics
+#using LinearAlgebra
+#using Statistics
 
 include("../../lib/Newton.jl")
 
 
 module NewtonApproach 
-
+using ForwardDiff
 using ..NewtonMethod
-
-Λ_func   = (x, a, b) -> 1.0 + b / 2.0 * (tanh(x/a) - 1.0)
 
 eucLen    = x -> (sum(x.^2.0))^(0.5)
 normalize = x -> x / eucLen(x)
@@ -17,10 +15,14 @@ we_func = (x, a) -> (x >= 0) ? x : a*x
 
 
 function repeat_fill!(to::AbstractArray, fr::AbstractArray)
+
     len_fr = length(fr)
+    println("Repeat:", len_fr, ", ", length(to))
+    println(typeof(fr), ", ", typeof(to))
     for i = 1 : length(to)
         to[i] = fr[mod(i-1, len_fr)+1]
     end 
+    println("Repeat done")
 end
 
 
@@ -40,6 +42,7 @@ function fit(;
     η        :: T,
     verbose  :: Bool = false
 ) where T <: AbstractFloat
+
 
     if mod(length(θ), period) != 0
         throw(ArgumentError("Data length should be multiple of [pts_per_year]"))
@@ -73,15 +76,21 @@ function fit(;
     Q_ph = zeros(T, N)
 
     calϵ2 = function(x)
+        println("Enter,", typeof(h))
+        println("Enter,", typeof(Q_ph))
+        println("Enter,", x)
         repeat_fill!(h,    x[ 1:12])
         repeat_fill!(Q_ph, x[13:24])
 
+        println("Enter1")
         h_p1 = circshift(h, -1)
         h_ph = (h_p1 + h) / 2.0
 
         ∂h∂t = (h_p1 - h) / Δt
 
+        println("Enter2")
         we =   we_func.(∂h∂t, a)
+        println("Enter3")
         
         ϵ =  (
             h_ph .* ∂θ∂t_ph
@@ -93,20 +102,26 @@ function fit(;
     end
 
     f_and_∇f = function(x)
+        println("Now we are here")
         f  = ForwardDiff.gradient(calϵ2, x)
+        println("Now we are here")
         ∇f = ForwardDiff.hessian( calϵ2, x)
 
         return f, ∇f
     end
 
-
-    x_mem[:] = Newton.fit(;
+    println(x_mem)
+    println(f_and_∇f(x_mem))
+    println("Gonna call newton.fit")
+    x_mem[:] = NewtonMethod.fit(;
         f_and_∇f = f_and_∇f,
         η        = η,
         x0       = x_mem,
         max      = max,
         verbose  = verbose
     )
+    println("done")
+
 
     return x_mem[ 1:period], x_mem[period+1:end]
 

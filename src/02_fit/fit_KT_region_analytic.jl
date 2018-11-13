@@ -1,6 +1,6 @@
 include("../01_config/general_config.jl")
 include("../01_config/regions.jl")
-include("./core/Newton_approach_core.jl")
+include("./core/Newton_approach_analytic_core.jl")
 include("./core/Param_Control.jl")
 
 using .NewtonApproach
@@ -11,14 +11,10 @@ import Statistics.mean
 
 #filename = format("{}-{}.nc", model_name, basename(@__FILE__))
 
-newton_fail_max = 10
+newton_fail_max = 20
 newton_η = 1e-5
 
 fail_count_max = 5
-
-N = (years-2)*12
-period = 12
-beg_t  = period + 1
 
 test_scenarios = Dict(
     "degenerate" => [
@@ -32,14 +28,14 @@ test_scenarios = Dict(
         0.25;
         0.00
     ],
-#=
     "init_omlmax" => [
-        1e-7 0.50;
-        1e-7 1.00;
-         0.0 1.00;
+        1e-5;
+        1e-7;
+         0.0;
     ]
-=#
 )
+
+bundle = NewtonApproach.Bundle(dtype; N=(years-2)*12, period=12, Δt=Δt)
 
 init_h = zeros(dtype, 12) 
 init_Q = zeros(dtype, 12)
@@ -76,14 +72,10 @@ for scenario in keys(test_scenarios)
         while continue_flag
             
             try
-                println("Gonna start fitting")
-                println(typeof(p_ctl.test_param))
-                println(p_ctl.test_param)
+                #println(typeof(p_ctl.test_param))
+                #println(p_ctl.test_param)
                 h, Q = NewtonApproach.fit(;
-                    N            = N,
-                    period       = period,
-                    beg_t        = beg_t,
-                    Δt           = Δt,
+                    bundle       = bundle,
                     init_h       = init_h,
                     init_Q       = init_Q,
                     θ            = θ,
@@ -125,7 +117,7 @@ for scenario in keys(test_scenarios)
 
     using JLD
 
-    filename = format("{}-{}-{}-new.jld", model_name, basename(@__FILE__), scenario)
+    filename = format("{}-{}-{}.jld", model_name, basename(@__FILE__), scenario)
     filename = joinpath(data_path, filename)
     println("Output filename: ", filename)
 
