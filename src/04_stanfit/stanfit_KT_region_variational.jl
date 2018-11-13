@@ -5,7 +5,7 @@ include("../01_config/regions.jl")
 
 using Printf
 using Formatting
-import Statistics.mean
+import Statistics: mean, std
 
 println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
 @printf("Importing Stan library...")
@@ -18,9 +18,7 @@ model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
 nchains     = 1
 num_samples = 1000
 stanmodel = Stanmodel(
-    Stan.Optimize(
-        method=Stan.Lbfgs()
-    );
+    Stan.Variational();
     name="KT",
     nchains=nchains,
     num_samples=num_samples,
@@ -66,59 +64,47 @@ for region_name in keys(regions)
     )
 
     println("Doing STAN...")
-    trial = 100
-    fit_ok = false
-    while true 
-        try
-            global sim1
-            rc, sim1 = stan(
-                stanmodel,
-                [data],
-                "tmp";
-                CmdStanDir = ENV["CMDSTAN_HOME"],
-                init = Dict(
-                    "h" => omlmax,
-                    "Q_s" => omlmax * 0.0,
-                    "theta_d" => 273.0 * ρ * c_p
-                )
-            )
-            if rc == 0
-                fit_ok = true
-            else
-                println(rc)
-            end
-        catch
-            println("Does not converge, next try. ", trial)
-            trial -= 1
-        end
-
-        if trial == 0 || fit_ok == true
-            break
-        end
-
+    rc, sim1 = stan(
+        stanmodel,
+        [data],
+        "tmp";
+        CmdStanDir = ENV["CMDSTAN_HOME"],
+        init = Dict(
+            "h" => omlmax,
+            "Q_s" => omlmax * 0.0,
+            "theta_d" => 273.0 * ρ * c_p
+        )
+    )
+    if rc == 0
+        fit_ok = true
+    else
+        println(rc)
     end
-
-    if fit_ok == false
-        println("Cannot find solution. Go on to next")
-    end
-    
 
     println("Extracting result...")
+    h_mean = zeros(12)
+    h_std  = zeros(12)
+    Q_mean = zeros(12)
+    Q_std  = zeros(12)
 
-    v = sim1[1]["optimize"]
 
-    h_est = zeros(12)
-    Q_est = zeros(12)
-
-    Td_est = v["theta_d"][1] / ρ / c_p
+    data_h = sim1[:, h_key, :].value
+    data_Q = sim1[:, Q_key, :].value
+    data_Td = sim1[:, ["theta_d"], :].value / ρ / c_p
 
     for i = 1:12
-        h_est[i] = v[h_key[i]][1] 
-        Q_est[i] = v[Q_key[i]][1] 
+        h_mean[i] = mean(data_h[:, i, :])
+        h_std[i]  = std(data_h[:, i, :])
+
+        Q_mean[i] = mean(data_Q[:, i, :])
+        Q_std[i]  = std(data_Q[:, i, :])
     end
 
     time_stat[region_name] = Base.time() - beg_time
     println(format("Region {} took {:.2f} min to do STAN fit.", region_name, time_stat[region_name] / 60.0 ))
+
+    Td_mean = mean(data_Td)
+    Td_std  = std(data_Td)
 
     using JLD
     filename = format("{}-{}-{}.jld", model_name, region_name, basename(@__FILE__))
@@ -126,11 +112,13 @@ for region_name in keys(regions)
     println("Output filename: ", filename)
     rm(filename, force=true)
     save(filename, Dict(
-        "h_est"   => h_est,
-        "Q_s_est" => Q_est,
-        "Td_est"  => Td_est,
+        "h_mean"   => h_mean,
+        "h_std"    => h_std,
+        "Q_s_mean" => Q_mean,
+        "Q_s_std"  => Q_std,
+        "Td_mean"  => Td_mean,
+        "Td_std"   => Td_std,
     ))
-
 end
 
 program_end_time = Base.time()

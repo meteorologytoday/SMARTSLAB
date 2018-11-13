@@ -8,11 +8,11 @@ include("../01_config/general_config.jl")
 
 for region_name in keys(regions)
     if region_name != "SPAC-1"
-#        continue
+    #    continue
     end
     # Reading data
 
-    filename = joinpath(data_path, format("NCAR-{}-stanfit_KT_region.jl.jld", region_name))
+    filename = joinpath(data_path, format("NCAR-{}-stanfit_KT_region_optimize.jl.jld", region_name))
     data = load(filename)
 
     model_d = Dict()
@@ -25,18 +25,17 @@ for region_name in keys(regions)
     end
 
     model_d["tos"]["mean"] .-= 273.15
-    data["Td_mean"] -= 273.15
+    data["Td_est"] -= 273.15
 
     t = collect(1:12)
 
     fig, ax = plt[:subplots](3, 1, figsize=(8,12), sharex=true)
 
     fig[:suptitle](
-        format("Ocean: {} \n {}\$T_d = {:.2f} \\pm {:.2f} \$ deg C",
+        format("Ocean: {} \n {}\$T_d = {:.2f} \$ deg C",
             region_name,
-            (data["Td_mean"] > minimum(model_d["tos"]["mean"])) ? "** " : "",
-            data["Td_mean"],
-            data["Td_std"]
+            (data["Td_est"] > minimum(model_d["tos"]["mean"])) ? "** " : "",
+            data["Td_est"],
         )
     )
 
@@ -81,15 +80,15 @@ for region_name in keys(regions)
 
     # Plot MLD
     #ax[2][:plot](t, degenerate["h"], color="b", marker="o", markersize=ms, dashes=(5,2,2,2), label="degenerate")
-    ax[2][:errorbar](t, data["h_mean"], yerr=data["h_std"], linestyle="-", color="r", fmt="s", label="HMC")
+    ax[2][:plot](t, data["h_est"], linestyle="-", color="r", marker="s", label="HMC")
     ax[2][:errorbar](t, model_d["omlmax"]["mean"], yerr=model_d["omlmax"]["std"], color="k", dashes=(5,2), fmt="o", label=format("{}-omlmax", model_name))
     ax[2][:legend]()
 
     # Plot Q flux
-    ax[3][:errorbar](t .+ 0.5, data["Q_s_mean"], yerr=data["Q_s_std"], color="r", linestyle="-", fmt="s", label="HMC")
+    ax[3][:plot](t .+ 0.5, data["Q_s_est"], color="r", linestyle="-", marker="s", label="HMC")
     ax[3][:legend]()
 
-    imgname = joinpath(img_path, format("stanfit_region_fit-{}-{}.png", model_name, region_name))
+    imgname = joinpath(img_path, format("stanfit_region_fit_optimize-{}-{}.png", model_name, region_name))
     @printf("Save image: %s  ...", imgname)
     fig[:savefig](imgname, dpi=100)
     println("done.")

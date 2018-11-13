@@ -12,7 +12,7 @@ for region_name in keys(regions)
     end
     # Reading data
 
-    filename = joinpath(data_path, format("NCAR-{}-stanfit_KT_region.jl.jld", region_name))
+    filename = joinpath(data_path, format("NCAR-{}-stanfit_KT_region_variational.jl.jld", region_name))
     data = load(filename)
 
     model_d = Dict()
@@ -89,7 +89,7 @@ for region_name in keys(regions)
     ax[3][:errorbar](t .+ 0.5, data["Q_s_mean"], yerr=data["Q_s_std"], color="r", linestyle="-", fmt="s", label="HMC")
     ax[3][:legend]()
 
-    imgname = joinpath(img_path, format("stanfit_region_fit-{}-{}.png", model_name, region_name))
+    imgname = joinpath(img_path, format("stanfit_region_fit_variational-{}-{}.png", model_name, region_name))
     @printf("Save image: %s  ...", imgname)
     fig[:savefig](imgname, dpi=100)
     println("done.")
