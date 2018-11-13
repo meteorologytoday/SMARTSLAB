@@ -8,11 +8,13 @@ module NewtonApproach
 
 using ..NewtonMethod
 
-
 Λ_func   = (x, a, b) -> 1.0 + b / 2.0 * (tanh(x/a) - 1.0)
 
 eucLen    = x -> (sum(x.^2.0))^(0.5)
 normalize = x -> x / eucLen(x)
+
+we_func = (x, a) -> (x >= 0) ? x : a*x
+
 
 function repeat_fill!(to::AbstractArray, fr::AbstractArray)
     len_fr = length(fr)
@@ -21,119 +23,92 @@ function repeat_fill!(to::AbstractArray, fr::AbstractArray)
     end 
 end
 
-function f_and_∇f(; h, Q_ph, θ, θ_p1, S_ph, B_ph, a, b)
-    Δt2 = bundle.Δt * 2.0
-
-    repeat_fill!(h, h[1:12])
-    repeat_fill!(Q_ph, Q_ph[1:12])
-
-    h_p1 = circshift(h, -1)
-
-    ∂h∂t = (h_p1 - h) / bundle.Δt
-    Λ   =   Λ_func.(∂h∂t, a, b)
-    
-    ϵ =  (
-        h    / Δt2 .* ( θ_p1 .* (1.0 .- Λ) - θ .* (1.0 .+ Λ) )
-        + h_p1 / Δt2 .* ( θ_p1 .* (1.0 .+ Λ) - θ .* (1.0 .- Λ) )
-        - S_ph - B_ph - Q_ph
-    )
-
-    for i=1:bundle.N, j=1:bundle.period
-        bundle.∇ϵ[i, j] =  (
-            bundle.δ[j, i]    / Δt2 * ( θ_p1[i] * (1.0 - Λ[i]) - θ[i] * (1.0 + Λ[i]) )
-            + bundle.δ_p1[j, i] / Δt2 * ( θ_p1[i] * (1.0 + Λ[i]) - θ[i] * (1.0 - Λ[i]) )
-            + ∂h∂t[i] * (θ[i] + θ_p1[i]) / 2.0 * bundle.γ[j, i] * ∂Λ[i]
-        )
-    end
-
-    g  = bundle.∇ϵ' * ϵ
-    ∇g = bundle.∇ϵ' * bundle.∇ϵ
-
-    # Add ϵ ∂^2ϵ/∂h^2 to ∇g
-    for i=1:12, j=1:12
-        ∇g[i, j] += sum(
-            ϵ .* bundle.γ[j, :] .* bundle.γ[i, :] .* θ_p1 .* (2.0 * ∂Λ - ∂∂Λ .* ∂h∂t)
-        )
-    end
-    return g, ∇g 
-end
 
 function fit(;
-    bundle   :: Bundle{T},
+    N        :: Integer,
+    period   :: Integer,
+    beg_t    :: Integer,
+    Δt       :: T,
     init_h   :: Array{T},
     init_Q   :: Array{T},
     θ        :: Array{T},
     S        :: Array{T},
     B        :: Array{T},
     θd       :: T,
-    ab_pairs,
-    max,
-    η,
+    a        :: T,
+    max      :: Integer,
+    η        :: T,
     verbose  :: Bool = false
 ) where T <: AbstractFloat
-    if mod(length(θ), bundle.period) != 0
+
+    if mod(length(θ), period) != 0
         throw(ArgumentError("Data length should be multiple of [pts_per_year]"))
     end
 
-    years = Int(length(S) / bundle.period)
+    years = Int(length(S) / period)
 
-    rng1 = collect(bundle.beg_t:bundle.beg_t+bundle.N-1)
+    rng1 = collect(beg_t:beg_t+N-1)
     rng2 = rng1 .+ 1
+
+
+    # Extract fixed data
 
     _S_ph = (S[rng1] + S[rng2]) / 2.0
     _B_ph = (B[rng1] + B[rng2]) / 2.0
 
-    _θd   = zeros(T, bundle.N)
-    _θd[1:bundle.period] .= θd
-    repeat_fill!(_θd, _θd[1:bundle.period])
+    _θd   = zeros(T, N)
+    _θd[1:period] .= θd
+    repeat_fill!(_θd, _θd[1:period])
 
-    _θ    = θ[rng1] - _θd
-    _θ_p1 = θ[rng2] - _θd
+    _θ    = θ[rng1]
+    _θ_p1 = θ[rng2]
 
-    x_mem = zeros(T, 2*bundle.period) 
-    x_mem[ 1              : bundle.period] = init_h 
-    x_mem[bundle.period+1 : end          ] = init_Q
+    _∂θ∂t_ph = (_θ_p1 - _θ) / Δt
 
-    h_long_vec = zeros(T, bundle.N)
-    Q_long_vec = zeros(T, bundle.N)
+    x_mem = zeros(T, 2*period) 
+    x_mem[ 1       : period] = init_h 
+    x_mem[period+1 : end   ] = init_Q
 
+    h    = zeros(T, N)
+    Q_ph = zeros(T, N)
 
-    # Gradually change entrainment condition
-    for i in 1:size(ab_pairs)[1]
-        if verbose
-            println("Now we are doing ab_pair: ", ab_pairs[i])
-        end
-        _g_and_∇g = function(x)
-            h_long_vec[1:12] = x[ 1:12]
-            Q_long_vec[1:12] = x[13:24]
-            return g_and_∇g(
-                bundle;
-                h = h_long_vec,
-                Q_ph = Q_long_vec,
-                θ = _θ,
-                θ_p1 = _θ_p1,
-                S_ph = _S_ph,
-                B_ph = _B_ph,
-                a    = ab_pairs[i][1],
-                b    = ab_pairs[i][2]
-            )
-        end
+    calϵ2 = function(x)
+        repeat_fill!(h,    x[ 1:12])
+        repeat_fill!(Q_ph, x[13:24])
 
+        h_p1 = circshift(h, -1)
+        h_ph = (h_p1 + h) / 2.0
 
-        x_mem[:] = Newton(
-            g_and_∇g = _g_and_∇g,
-            η        = η,
-            x0       = x_mem,
-            max      = max,
-            verbose  = verbose
+        ∂h∂t = (h_p1 - h) / Δt
+
+        we =   we_func.(∂h∂t, a)
+        
+        ϵ =  (
+            h_ph .* ∂θ∂t_ph
+            + (θ_ph .- θd) .* we
+            - S_ph - B_ph - Q_ph
         )
 
-        #println((x_mem[2:12] - x_mem[1:11]) / dt)
- 
-        #println("Q std: ", std(x_mem[13:24]))
+        return ϵ' * ϵ
     end
 
-    return x_mem[ 1:bundle.period], x_mem[bundle.period+1:end]
+    f_and_∇f = function(x)
+        f  = ForwardDiff.gradient(calϵ2, x)
+        ∇f = ForwardDiff.hessian( calϵ2, x)
+
+        return f, ∇f
+    end
+
+
+    x_mem[:] = Newton.fit(;
+        f_and_∇f = f_and_∇f,
+        η        = η,
+        x0       = x_mem,
+        max      = max,
+        verbose  = verbose
+    )
+
+    return x_mem[ 1:period], x_mem[period+1:end]
 
 end
 

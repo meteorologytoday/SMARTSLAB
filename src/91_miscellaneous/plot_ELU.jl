@@ -1,7 +1,7 @@
 using PyPlot
 
 
-
+ELU(x, α) = 
 
 Λ = (x, a, b) -> 1.0 + b / 2.0 * (tanh(x/a) - 1.0)
 
