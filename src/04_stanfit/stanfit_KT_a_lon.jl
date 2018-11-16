@@ -1,27 +1,55 @@
+program_beg_time = Base.time()
+
 include("../01_config/general_config.jl")
-include("../01_config/regions.jl")
 
 using Printf
 using Formatting
-import Statistics.mean
+using NCDatasets
+import Statistics: mean, std
+
+if length(ARGS) != 2
+    throw(ErrorException("Length of ARGS must be 2. The first is the name of the run and the second is the longitude index."))
+end
+
+exp_name = ARGS[1]
+lon_i = parse(Int, ARGS[2])
 
 println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
 @printf("Importing Stan library...")
-using Stan, Mamba
+using Stan
 @printf("done\n")
 
-lon_i = convert(Int, ARGV[1])
+
+
+# construct data folder
+main_dir = joinpath(data_path, splitext(basename(@__FILE__))[1], exp_name)
+tmp_dir = joinpath(main_dir, "stan_tmp", format("{:03d}", lon_i))
+mkpath(main_dir)
+mkpath(tmp_dir)
+
+filename = format("{:03d}.jld", lon_i)
+filename = joinpath(main_dir, filename)
 
 println("This program is going to fit lon[", lon_i, "] = ", lon[lon_i])
+if isfile(filename)
+    println("File ", filename, " already exists. End program.")
+end
 
 model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
 
-@printf("Now we are going to build stan model...\n")
-nchains     = 4
-num_samples = 1000
-stanmodel = Stanmodel(name="KT", nchains=nchains, num_samples=num_samples, model=model_script)
-display(stanmodel)
+nchains     = 1
+num_samples = 10
+num_warmup  = 1
+stanmodel = Stanmodel(
+    name="KT",
+    nchains=nchains,
+    num_samples=num_samples,
+    num_warmup=num_warmup,
+    model=model_script,
+    pdir=tmp_dir,
+)
 
+display(stanmodel)
 
 h_key = [ format("h.{}", i) for i = 1:12 ]
 Q_key = [ format("Q_s.{}", i) for i = 1:12 ]
@@ -29,35 +57,60 @@ Q_key = [ format("Q_s.{}", i) for i = 1:12 ]
 data = Dict()
 time_stat = Dict()
 
-for region_name in keys(regions)
 
-    if region_name != "SPAC-1"
+total_time = 0.0
+
+β_mean = zeros(dtype, length(lat), 25)
+β_std = zeros(dtype, length(lat), 25)
+
+β_mean .= NaN
+β_std  .= NaN
+
+crop_range = (lon_i, :, :)
+
+
+omlmax = readModelVar("omlmax", crop_range)
+θ      = readModelVar("tos", crop_range) * (ρ * c_p)
+F      = readModelVar("hfds", crop_range)
+
+N = size(θ)[2]
+
+for j = 1:length(lat)
+
+    if isnan(θ[j, 1]) # skip land
         continue
     end
+
+    println(format("Doing lat[{:d}] = {:.2f}", j, lat[j]))
+
     beg_time = Base.time()
-    println("### Doing region: ", region_name)
 
-    # Read model omlmax
-    omlmax = reshape(readModelRegionVar(region_name, "omlmax"), 12, :)
-    omlmax = mean(omlmax; dims=(2,))
-
-    # Generate region data
-    θ = readModelRegionVar(region_name, "tos") * (ρ * c_p)
-    F = readModelRegionVar(region_name, "hfds")
-    N = length(θ) 
+    omlmax_mean = mean( reshape(omlmax[j, :], 12, :); dims=(2,) )[:] # need squeeze dimension
+    println("size of init_omlmax: ", size(omlmax_mean))
+    println("init_omlmax: ", omlmax_mean)
 
     data = Dict(
         "N"           => N, 
         "period"      => 12, 
         "dt"          => Δt, 
-        "theta"       => θ, 
-        "F"           => F,
+        "theta"       => θ[j, :], 
+        "F"           => F[j, :],
         "epsilon_std" => 10.0,
         "Q_std"       => 100.0,
     )
 
-    println("Doing STAN...")
-    rc, sim1 = stan(stanmodel, [data], "tmp", CmdStanDir=ENV["CMDSTAN_HOME"])
+    init = Dict(
+        "h" => omlmax_mean
+    )
+    
+
+    rc, sim1 = stan(
+        stanmodel,
+        [data];
+        init = [init],
+        CmdStanDir=ENV["CMDSTAN_HOME"]
+    )
+
     if rc != 0
         println("There are errors!!")
         continue
@@ -82,35 +135,37 @@ for region_name in keys(regions)
         Q_std[i]  = std(data_Q[:, i, :])
     end
 
-    time_stat[region_name] = Base.time() - beg_time
-    println(format("Region {} took {:.2f} min to do STAN fit.", region_name, time_stat[region_name] / 60.0 ))
-
     Td_mean = mean(data_Td)
     Td_std  = std(data_Td)
 
-    using JLD
-    filename = format("{}-{}-{}.jld", model_name, region_name, basename(@__FILE__))
-    filename = joinpath(data_path, filename)
-    println("Output filename: ", filename)
-    rm(filename, force=true)
-    save(filename, Dict(
-        "h_mean"   => h_mean,
-        "h_std"    => h_std,
-        "Q_s_mean" => Q_mean,
-        "Q_s_std"  => Q_std,
-        "Td_mean"  => Td_mean,
-        "Td_std"   => Td_std,
-    ))
+
+    β_mean[j,  1:12] = h_mean
+    β_mean[j, 13:24] = Q_mean
+    β_mean[j,    25] = Td_mean
+
+    β_std[j,  1:12] = h_std
+    β_std[j, 13:24] = Q_std
+    β_std[j,    25] = Td_std
+
+    time_stat = Base.time() - beg_time
+
+    global total_time += time_stat
+    println(format("[{:03d}] Stan fit: {:.2f} min. Total time: {:.2f} min. ", j, time_stat / 60.0, total_time / 60.0 ))
 
 end
 
+using JLD
+
+println("Output filename: ", filename)
+rm(filename, force=true)
+save(filename, Dict("β_mean" => β_mean, "β_std" => β_std))
+
+
 program_end_time = Base.time()
 
-
-
-@printf("Total time used: %.2f min for %d regions, with nchains = %d, num_samples = %d\n",
+@printf("Total time used: %.2f min for %d points, with nchains = %d, num_samples = %d\n",
     (program_end_time-program_beg_time)/ 60.0,
-    length(keys(regions)),
+    length(lat),
     nchains,
     num_samples
 )
