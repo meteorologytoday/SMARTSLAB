@@ -3,9 +3,8 @@ program_beg_time = Base.time()
 include("../01_config/general_config.jl")
 include("../01_config/regions.jl")
 include("status_code.jl")
-using Printf
+
 using Formatting
-import Statistics.mean
 using NCDatasets
 
 #=
@@ -24,6 +23,8 @@ status_attrib = Dict(
     "_ERROR"      => STATUS[:ERROR],
 )
 
+verbose = false
+parallel_n = 6
 
 # Create a file for checking status
 status_filename = "status.nc"
@@ -75,10 +76,13 @@ function reportStatus()
     global undone_count = sum( status .== STATUS[:UNDONE])
     global total_count = sum( status .!= STATUS[:NAN])
 
-    #println(done_count)
-    #println(undone_count)
-    #println(total_count)
-    @printf("Progress: %.1f %% (%d / %d)\n", done_count / total_count * 100.0, done_count, total_count)
+    println(
+        format("Progress: {:.1f} % ({:d} / {:d})",
+            done_count / total_count * 100.0,
+            done_count,
+            total_count
+        )
+    )
 end
 
 function markStatus(i, j, stat)
@@ -86,9 +90,8 @@ function markStatus(i, j, stat)
     
     if sum(status[i, :] .== STATUS[:UNDONE]) == 0
         try
-            println("lon[", i, "] = ", lon[i], " is all complete. Write status...")
+            println("lon[", i, "] = ", lon[i], " is all complete and now update status.")
             updateStatus()
-            println("done")
         catch e
             throw(e)
         end
@@ -96,11 +99,11 @@ function markStatus(i, j, stat)
 end
 
 function updateStatus()
-    println("backup")
+    verbose && println("backup")
     backupStatus()
-    println("write")
+    verbose && println("write")
     writeStatus()
-    println("report")
+    verbose && println("report")
     reportStatus()
 end
 
@@ -117,7 +120,7 @@ end
 function writeStatus()
 
     try
-        println("create")
+        verbose && println("create")
         ds = Dataset(status_filename, "c")
         defDim(ds, "lat", length(lat))
         defDim(ds, "lon", length(lon))
@@ -126,14 +129,13 @@ function writeStatus()
         defVar(ds, "lon",  dtype, ("lon",))[:]  = lon
         
         v = defVar(ds, "status", dtype, ("lon", "lat"))
-        println("defined variable")
+        verbose && println("defined variable")
         for key in keys(status_attrib)
-            println(key)
             v.attrib[key] = status_attrib[key]
         end
-        println("defined attrib")
+        verbose && println("defined attrib")
         v[:] = status
-        println("output variable")
+        verbose && println("output variable")
 
 
     catch e
@@ -146,6 +148,11 @@ end
 
 
 reportStatus()
+if undone_count == 0
+    println("Nothing to do. All jobs are complete. Now exiting the program...")
+    exit()
+end
+
 
 jobs    = Channel(2)
 results = Channel(2)
@@ -194,14 +201,14 @@ end
 
 
 function do_jobs(worker_id)
-    @printf("[%02d] Ready to do jobs\n", worker_id)
+    println("[", worker_id, "] Ready to do jobs.")
     for job in jobs
         i, j = job["lonlat_i"]
 
         markStatus(i, j, :DONE)
         put!(results, "done")
     end
-    @printf("[%02d] worker done.\n", worker_id)
+    println("[", worker_id, "] Work done.")
 end
 
 println("Call make_jobs()")
@@ -209,11 +216,10 @@ println("Call make_jobs()")
 
 
 
-for i in 1:1
+for i in 1:parallel_n
     println("Call do_jobs() with i = ", i)
     @async do_jobs(i)
 end
-
 
 n = undone_count
 @elapsed for result in results
