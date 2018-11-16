@@ -11,9 +11,6 @@ using ..NewtonMethod
 eucLen    = x -> (sum(x.^2.0))^(0.5)
 normalize = x -> x / eucLen(x)
 
-we_func = (x, a) -> (x >= 0) ? x : a*x
-
-
 function repeat_fill!(to::AbstractArray, fr::AbstractArray)
 
     len_fr = length(fr)
@@ -33,10 +30,10 @@ function fit(;
     Δt       :: T,
     init_h   :: Array{T},
     init_Q   :: Array{T},
+    init_θd  :: T,
     θ        :: Array{T},
     S        :: Array{T},
     B        :: Array{T},
-    θd       :: T,
     a        :: T,
     max      :: Integer,
     η        :: T,
@@ -44,75 +41,71 @@ function fit(;
 ) where T <: AbstractFloat
 
 
-    if mod(length(θ), period) != 0
-        throw(ArgumentError("Data length should be multiple of [pts_per_year]"))
+    if mod(length(θ), period) != 0 || mod(N, period) !=0
+        throw(ArgumentError("Data length should be multiple of [period]"))
     end
 
-    years = Int(length(S) / period)
+    reduced_years = Int(N / period)
 
     rng1 = collect(beg_t:beg_t+N-1)
     rng2 = rng1 .+ 1
 
 
     # Extract fixed data
-
     _S_ph = (S[rng1] + S[rng2]) / 2.0
     _B_ph = (B[rng1] + B[rng2]) / 2.0
-
-    _θd   = zeros(T, N)
-    _θd[1:period] .= θd
-    repeat_fill!(_θd, _θd[1:period])
 
     _θ    = θ[rng1]
     _θ_p1 = θ[rng2]
 
     _∂θ∂t_ph = (_θ_p1 - _θ) / Δt
+    _θ_ph    = (_θ_p1 + _θ) / 2.0
 
-    x_mem = zeros(T, 2*period) 
-    x_mem[ 1       : period] = init_h 
-    x_mem[period+1 : end   ] = init_Q
+    x_mem = zeros(T, 2*period+1)
 
-    h    = zeros(T, N)
-    Q_ph = zeros(T, N)
+    x_mem[ 1       :   period] = init_h 
+    x_mem[period+1 : 2*period] = init_Q
+    x_mem[end] = init_θd
+
+
 
     calϵ2 = function(x)
-        println("Enter,", typeof(h))
-        println("Enter,", typeof(Q_ph))
-        println("Enter,", x)
-        repeat_fill!(h,    x[ 1:12])
-        repeat_fill!(Q_ph, x[13:24])
 
-        println("Enter1")
+        h    = repeat(x[1:period],          outer=(reduced_years,))
+        Q_ph = repeat(x[period+1:2*period], outer=(reduced_years,))
+        θd   = x[end]
+        h_p1 = circshift(h, -1)
+
         h_p1 = circshift(h, -1)
         h_ph = (h_p1 + h) / 2.0
 
         ∂h∂t = (h_p1 - h) / Δt
 
-        println("Enter2")
-        we =   we_func.(∂h∂t, a)
-        println("Enter3")
+        we = ((∂h∂t .≥ 0) + (∂h∂t .< 0) .* a) .* ∂h∂t
         
         ϵ =  (
-            h_ph .* ∂θ∂t_ph
-            + (θ_ph .- θd) .* we
-            - S_ph - B_ph - Q_ph
+            h_ph .* _∂θ∂t_ph
+            + (_θ_ph .- θd) .* we
+            -  _S_ph  - _B_ph - Q_ph
         )
+
+        #=
+        # Combined version (not applied product rule yet)
+        ϵ = (
+            (h_p1 .* _θ_p1 - h .* _θ) / Δt - _S_ph - _B_ph - Q_ph
+        )
+        =#
 
         return ϵ' * ϵ
     end
 
     f_and_∇f = function(x)
-        println("Now we are here")
         f  = ForwardDiff.gradient(calϵ2, x)
-        println("Now we are here")
         ∇f = ForwardDiff.hessian( calϵ2, x)
 
         return f, ∇f
     end
 
-    println(x_mem)
-    println(f_and_∇f(x_mem))
-    println("Gonna call newton.fit")
     x_mem[:] = NewtonMethod.fit(;
         f_and_∇f = f_and_∇f,
         η        = η,
@@ -120,10 +113,9 @@ function fit(;
         max      = max,
         verbose  = verbose
     )
-    println("done")
 
 
-    return x_mem[ 1:period], x_mem[period+1:end]
+    return x_mem
 
 end
 

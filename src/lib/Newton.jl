@@ -20,11 +20,14 @@ function fit(;
     for i = 1:max
         if verbose
             println("Newton method iteration: ", i)
+            println("x: ", x)
         end
         f, ∇f = f_and_∇f(x)
         Δx = - ∇f \ f
-        #println(x)
-        if (Δx' * Δx)^0.5 >= η
+
+        eulen_Δx = (Δx' * Δx)^0.5
+        verbose && println("|Δx| = ", eulen_Δx)
+        if eulen_Δx >= η
             x += Δx
         else
             if_converge = true

@@ -1,6 +1,6 @@
-rng = 1:1200
-#rng = Colon()
-years = 100
+#rng = 1:1200
+rng = Colon()
+#years = 100
 F = readModelVar("hfds", (:, :, rng))
 θ = readModelVar("tos", (:, :, rng)) * ρ * c_p
 

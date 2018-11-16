@@ -1,17 +1,21 @@
 include("Newton.jl")
 
-using Newton
+using .NewtonMethod
 using LinearAlgebra
+using ForwardDiff
 
-g = x -> [2.0 * x[1] + 1, x[2]]
-Jg = x -> (I + zeros(2,2))  * 2.0
+g = x -> sum(x.^2.0)
 
-ans = Newton.fit(
-    g  = g,
-    Jg = Jg,
+f_and_∇f = x -> (ForwardDiff.gradient(g, x), ForwardDiff.hessian(g, x))
+
+
+
+ans = NewtonMethod.fit(;
+    f_and_∇f = f_and_∇f,
     η  = 1e-45,
     x0 = [2.0, 100.0],
-    max = 1000
+    max = 1000,
+    verbose = true
 )
 
 println(ans)

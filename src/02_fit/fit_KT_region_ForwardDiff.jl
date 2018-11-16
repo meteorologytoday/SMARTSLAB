@@ -1,6 +1,6 @@
 include("../01_config/general_config.jl")
 include("../01_config/regions.jl")
-include("./core/Newton_approach_core.jl")
+include("./core/Newton_approach_ForwardDiff_core.jl")
 include("./core/Param_Control.jl")
 
 using .NewtonApproach
@@ -32,13 +32,12 @@ test_scenarios = Dict(
         0.25;
         0.00
     ],
-#=
+
     "init_omlmax" => [
-        1e-7 0.50;
-        1e-7 1.00;
-         0.0 1.00;
+        1e-7 ;
+        1e-5 ;
+         0.0 ;
     ]
-=#
 )
 
 init_h = zeros(dtype, 12) 
@@ -125,7 +124,7 @@ for scenario in keys(test_scenarios)
 
     using JLD
 
-    filename = format("{}-{}-{}-new.jld", model_name, basename(@__FILE__), scenario)
+    filename = format("{}-{}-{}.jld", model_name, basename(@__FILE__), scenario)
     filename = joinpath(data_path, filename)
     println("Output filename: ", filename)
 

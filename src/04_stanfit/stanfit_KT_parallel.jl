@@ -2,57 +2,224 @@ program_beg_time = Base.time()
 
 include("../01_config/general_config.jl")
 include("../01_config/regions.jl")
-
+include("status_code.jl")
 using Printf
 using Formatting
 import Statistics.mean
+using NCDatasets
 
-println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
-@printf("Importing Stan library...")
-using Stan, Mamba
-@printf("done\n")
+#=
+θ_data      = readModelVar("tos") * ρ * c_p
+F_data      = readModelVar("hfds")
+omlmax_data = readModelVar("omlmax")
+B_data = zeros(dtype, length(time))
+=#
 
-model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
-
-@printf("Now we are going to build stan model...\n")
-nchains     = 4
-num_samples = 1000
-stanmodel = Stanmodel(name="KT", nchains=nchains, num_samples=num_samples, model=model_script)
-display(stanmodel)
-
-
-
-function make_jobs()
-    lon = 
-
-
-
-
-
-
-
-
-end
-
-
-function do_jobs()
-end
-
-
-
-
-
-
-
-
-
-    rc, sim1 = stan(stanmodel, [data], "tmp", CmdStanDir=ENV["CMDSTAN_HOME"])
-
-
-
-@printf("Total time used: %.2f min for %d regions, with nchains = %d, num_samples = %d\n",
-    (program_end_time-program_beg_time)/ 60.0,
-    length(keys(regions)),
-    nchains,
-    num_samples
+status_attrib = Dict(
+    "_FillValue" => missing_value,
+    "_NAN"       => STATUS[:NAN],
+    "_UNDONE"    => STATUS[:UNDONE],
+    "_DOING"     => STATUS[:DOING],
+    "_DONE"      => STATUS[:DONE],
+    "_ERROR"      => STATUS[:ERROR],
 )
+
+
+# Create a file for checking status
+status_filename = "status.nc"
+status_file_lock = false
+need_create = true
+if isfile(status_filename)
+    println("Status file ", status_filename, " exists.")
+    ds = Dataset(status_filename, "r")
+    if haskey(ds, "status")
+        need_create = false
+    else
+        need_create = true
+        println("File exists but no variable [status].")
+    end
+end
+
+if need_create
+    println("Status file need to be (re)created: ", status_filename)
+    mask = readModelVar("tos", (:, :, 1))
+    mask[isfinite.(mask)] .= STATUS[:UNDONE]
+    mask[isnan.(mask)]    .= STATUS[:NAN]
+
+    ds = Dataset(status_filename, "c")
+    defDim(ds, "lat", length(lat))
+    defDim(ds, "lon", length(lon))
+
+    defVar(ds, "lat",  dtype, ("lat",))[:]  = lat
+    defVar(ds, "lon",  dtype, ("lon",))[:]  = lon
+
+    v = defVar(ds, "status", dtype, ("lon", "lat"))
+    for key in keys(status_attrib)
+        v.attrib[key] = status_attrib[key]
+    end
+    v[:] = mask
+
+    close(ds)
+end
+
+
+ds = Dataset(status_filename,"r")
+status = convert(Array{dtype}, nomissing(ds["status"][:], NaN))
+close(ds)
+
+status[(status .== STATUS[:DOING]) .| (status .== STATUS[:ERROR])] .= STATUS[:UNDONE]
+
+done_count, undone_count, total_count = NaN, NaN, NaN
+function reportStatus()
+    global done_count = sum( status .== STATUS[:DONE])
+    global undone_count = sum( status .== STATUS[:UNDONE])
+    global total_count = sum( status .!= STATUS[:NAN])
+
+    #println(done_count)
+    #println(undone_count)
+    #println(total_count)
+    @printf("Progress: %.1f %% (%d / %d)\n", done_count / total_count * 100.0, done_count, total_count)
+end
+
+function markStatus(i, j, stat)
+    status[i, j] = STATUS[stat]
+    
+    if sum(status[i, :] .== STATUS[:UNDONE]) == 0
+        try
+            println("lon[", i, "] = ", lon[i], " is all complete. Write status...")
+            updateStatus()
+            println("done")
+        catch e
+            throw(e)
+        end
+    end
+end
+
+function updateStatus()
+    println("backup")
+    backupStatus()
+    println("write")
+    writeStatus()
+    println("report")
+    reportStatus()
+end
+
+
+function backupStatus()
+    try
+        cp(status_filename, "tmp.nc", force=true)
+    catch e
+        println("Copying file failed. Keep going...")
+        println(e)
+    end
+end
+
+function writeStatus()
+
+    try
+        println("create")
+        ds = Dataset(status_filename, "c")
+        defDim(ds, "lat", length(lat))
+        defDim(ds, "lon", length(lon))
+
+        defVar(ds, "lat",  dtype, ("lat",))[:]  = lat
+        defVar(ds, "lon",  dtype, ("lon",))[:]  = lon
+        
+        v = defVar(ds, "status", dtype, ("lon", "lat"))
+        println("defined variable")
+        for key in keys(status_attrib)
+            println(key)
+            v.attrib[key] = status_attrib[key]
+        end
+        println("defined attrib")
+        v[:] = status
+        println("output variable")
+
+
+    catch e
+        throw(e)
+    finally
+        close(ds)        
+    end
+
+end
+
+
+reportStatus()
+
+jobs    = Channel(2)
+results = Channel(2)
+
+job_assigned = 0
+function make_jobs()
+    println("Start making jobs")
+    for i = 1:length(lon), j = 1:length(lat)
+        try
+        if isnan(status[i,j]) || status[i,j] != STATUS[:UNDONE]
+            continue
+        end
+
+        #println("i, j = ", i, ", ", j)
+        status[i, j] = STATUS[:DOING]
+
+        # load data
+        #=
+        θ      = θ_data[i, j, :]
+        S      = F_data[i, j, :]
+        B      = B_data
+        omlmax = omlmax_data[i, j, :]
+        =#
+        θ      = 1
+        S      = 2
+        B      = 3
+        omlmax = 4
+        
+        put!(jobs,
+            Dict(
+                "lonlat_i" => (i, j),
+                "θ"        => θ,
+                "S"        => S,
+                "B"        => B,
+                "omlmax"   => omlmax
+            )
+        )
+
+        catch e
+            throw(e)
+        end
+    end
+    close(jobs)
+    println("finished making jobs.")
+end
+
+
+function do_jobs(worker_id)
+    @printf("[%02d] Ready to do jobs\n", worker_id)
+    for job in jobs
+        i, j = job["lonlat_i"]
+
+        markStatus(i, j, :DONE)
+        put!(results, "done")
+    end
+    @printf("[%02d] worker done.\n", worker_id)
+end
+
+println("Call make_jobs()")
+@async make_jobs()
+
+
+
+for i in 1:1
+    println("Call do_jobs() with i = ", i)
+    @async do_jobs(i)
+end
+
+
+n = undone_count
+@elapsed for result in results
+    global n-= 1
+    if n == 0
+        break
+    end
+end
+

@@ -4,8 +4,9 @@ include("../lib/NetCDFHelper.jl")
 include("./core/LR_flexible_slab_core.jl")
 
 
-θ = readModelVar("tos") * ρ * c_p 
-F = readModelVar("hfds")
+θ = readModelVar("tos")
+F = readModelVar("hfds") * ρ * c_p
+
 β     = zeros(dtype, lon_len, lat_len, 24)
 β_std = copy(β)
 
