@@ -37,7 +37,7 @@ end
 
 model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
 
-nchains     = 1
+nchains     = 2
 num_samples = 10
 num_warmup  = 1
 stanmodel = Stanmodel(
