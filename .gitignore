@@ -1,3 +1,4 @@
+*.log
 *.swp
 *.swo
 *.nc
@@ -8,3 +9,4 @@ img/
 *.csv
 tmp
 *.hpp
+data/

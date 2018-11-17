@@ -14,7 +14,17 @@ img_path = joinpath(dirname(@__FILE__), "..", "..", "img")
 fn = Dict()
 fn_region = Dict()
 
-model_name = "NCAR"
+try
+    model_name
+    models[model_name]
+catch e
+    if isa(e, UndefVarError)
+        model_name = "NCAR"
+    end
+end
+
+
+
 model_fname_pattern = models[model_name]
 println("# Files on the list:")
 varnames = ["omlmax", "tos", "hfds"]

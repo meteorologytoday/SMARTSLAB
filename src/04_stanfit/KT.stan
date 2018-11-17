@@ -46,7 +46,7 @@ transformed data {
 
 
 parameters {
-    real<lower=0, upper=1000> h[period];
+    real<lower=0, upper=5000> h[period];
     real Q_s[period];
     real<lower=270*4000000, upper=300*4000000> theta_d;
 }

@@ -1,11 +1,14 @@
+include("config_a_lon.jl")
 include("../01_config/general_config.jl")
-
+using Dates
+using Formatting
 ch = 100
-max_workers = 6
-exp_name = "01_quickrun"
+max_workers = 7
+exp_name = format("HMC_{}_c{:d}_s{:d}", model_name, nchains, num_samples)
 
 script_dir = dirname(@__FILE__)
 script_file = joinpath(script_dir, "stanfit_KT_a_lon.jl")
+log_file = format("{}.log", exp_name)
 
 jobs    = Channel(ch)
 results = Channel(ch)
@@ -35,13 +38,25 @@ for i=1:max_workers
     @async do_jobs()
 end
 
+
+function print_log(s)
+    open(log_file, "a") do f
+        write(f, s)
+    end
+end
+
+print_log(format("[{:.2f} hr] Begin at {}.\n", 0.0, Dates.format(Dates.now(), "yyyy-mm-dd HH:MM:SS")))
 n = 0
+beg_time = Base.time()
+
 @elapsed while true
     result = take!(results)
     global n += 1
-    println(format("Progress: {:.2f} % ( {:d} / {:d} )", 100.0 * n / length(lon), n, length(lon)))
+    consumed_time = Base.time() - beg_time
+    print_log(format("[{:.2f} hr] Progress: {:.2f} % ( {:d} / {:d} )\n", consumed_time / 3600.0, 100.0 * n / length(lon), n, length(lon)))
+
     if n == length(lon)
-        println("All the work is done.")
+        print_log("All the work is done.\n")
         break
     end
 end

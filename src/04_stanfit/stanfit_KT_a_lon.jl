@@ -1,5 +1,6 @@
 program_beg_time = Base.time()
 
+include("config_a_lon.jl")
 include("../01_config/general_config.jl")
 
 using Printf
@@ -13,11 +14,6 @@ end
 
 exp_name = ARGS[1]
 lon_i = parse(Int, ARGS[2])
-
-println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
-@printf("Importing Stan library...")
-using Stan
-@printf("done\n")
 
 
 
@@ -33,13 +29,16 @@ filename = joinpath(main_dir, filename)
 println("This program is going to fit lon[", lon_i, "] = ", lon[lon_i])
 if isfile(filename)
     println("File ", filename, " already exists. End program.")
+    exit()
 end
 
-model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
+println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
+@printf("Importing Stan library...")
+using Stan
+@printf("done\n")
 
-nchains     = 2
-num_samples = 10
-num_warmup  = 1
+
+model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
 stanmodel = Stanmodel(
     name="KT",
     nchains=nchains,
@@ -49,7 +48,7 @@ stanmodel = Stanmodel(
     pdir=tmp_dir,
 )
 
-display(stanmodel)
+#display(stanmodel)
 
 h_key = [ format("h.{}", i) for i = 1:12 ]
 Q_key = [ format("Q_s.{}", i) for i = 1:12 ]
