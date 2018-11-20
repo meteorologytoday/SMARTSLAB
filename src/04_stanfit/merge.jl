@@ -2,23 +2,27 @@ using JLD
 using Formatting
 using NCDatasets
 
-model_name = "NCAR_3deg"
+include("config_a_lon.jl")
 include("../01_config/general_config.jl")
 
-exp_name = "01_quickrun"
 main_dir = joinpath(data_path, "stanfit_KT_a_lon", exp_name)
 
 β_mean = zeros(dtype, length(lon), length(lat), 25)
 β_std  = copy(β_mean)
 
+β_mean .= NaN
+β_std  .= NaN
 
 for i = 1:length(lon)
     filename = joinpath(main_dir, format("{:03d}.jld", i))
-
-    println("Doing file: ", filename)
-    d = JLD.load(filename)
-    β_mean[i, :, :] = d["β_mean"][:, :]
-    β_std[i, :, :]  = d["β_std"][:, :]
+    if isfile(filename)
+        println("Doing file: ", filename)
+        d = JLD.load(filename)
+        β_mean[i, :, :] = d["β_mean"][:, :]
+        β_std[i, :, :]  = d["β_std"][:, :]
+    else
+        println("File: ", filename, " does not exist. Skip this one.")
+    end
 end
 
 nan2missing!(β_mean)

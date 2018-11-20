@@ -4,7 +4,7 @@ using Dates
 using Formatting
 ch = 100
 max_workers = 7
-exp_name = format("HMC_{}_c{:d}_s{:d}", model_name, nchains, num_samples)
+
 
 script_dir = dirname(@__FILE__)
 script_file = joinpath(script_dir, "stanfit_KT_a_lon.jl")
