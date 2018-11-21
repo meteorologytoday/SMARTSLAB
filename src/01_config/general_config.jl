@@ -18,8 +18,10 @@ try
     model_name
     models[model_name]
 catch e
+
     if isa(e, UndefVarError)
-        model_name = "NCAR"
+        global model_name = "NCAR"
+        println("model_name not set. use the deafult: ", model_name)
     end
 end
 

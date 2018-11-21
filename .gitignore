@@ -11,3 +11,4 @@ tmp
 *.hpp
 data/
 slurm.epilog*
+data
