@@ -134,6 +134,9 @@ for j = 1:length(lat)
     Td_mean = mean(data_Td)
     Td_std  = std(data_Td)
 
+    println("h_mean", h_mean)
+    println("Q_mean", Q_mean)
+    println("Td_mean", Td_mean)
 
     β_mean[j,  1:12] = h_mean
     β_mean[j, 13:24] = Q_mean

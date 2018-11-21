@@ -2,10 +2,10 @@ using JLD
 using Formatting
 using NCDatasets
 
-include("config_a_lon.jl")
+include("config.jl")
 include("../01_config/general_config.jl")
 
-main_dir = joinpath(data_path, "stanfit_KT_a_lon", exp_name)
+main_dir = joinpath(data_path, "stanfit_KT_single_longitude", exp_name)
 
 β_mean = zeros(dtype, length(lon), length(lat), 25)
 β_std  = copy(β_mean)
@@ -14,7 +14,7 @@ main_dir = joinpath(data_path, "stanfit_KT_a_lon", exp_name)
 β_std  .= NaN
 
 for i = 1:length(lon)
-    filename = joinpath(main_dir, format("{:03d}.jld", i))
+    filename = normpath(joinpath(main_dir, format("{:03d}.jld", i)))
     if isfile(filename)
         println("Doing file: ", filename)
         d = JLD.load(filename)
