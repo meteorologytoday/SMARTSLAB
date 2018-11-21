@@ -10,3 +10,4 @@ img/
 tmp
 *.hpp
 data/
+slurm.epilog*

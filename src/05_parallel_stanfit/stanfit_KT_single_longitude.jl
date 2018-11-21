@@ -1,6 +1,6 @@
 program_beg_time = Base.time()
 
-include("config_a_lon.jl")
+include("config.jl")
 include("../01_config/general_config.jl")
 
 using Printf
@@ -8,12 +8,11 @@ using Formatting
 using NCDatasets
 import Statistics: mean, std
 
-if length(ARGS) != 2
-    throw(ErrorException("Length of ARGS must be 2. The first is the name of the run and the second is the longitude index."))
+if length(ARGS) != 1 
+    throw(ErrorException("Length of ARGS must be 1. That is the longitude index."))
 end
 
-exp_name = ARGS[1]
-lon_i = parse(Int, ARGS[2])
+lon_i = parse(Int, ARGS[1])
 
 
 
@@ -81,6 +80,7 @@ for j = 1:length(lat)
     end
 
     println(format("Doing lat[{:d}] = {:.2f}", j, lat[j]))
+    writelog(lon_i, "[{:03d}] Doing lat[{:d}] = {:.2f}", j, lon_i, j, lat[j] )
 
     beg_time = Base.time()
 
@@ -102,7 +102,6 @@ for j = 1:length(lat)
         "h" => omlmax_mean
     )
     
-
     rc, sim1 = stan(
         stanmodel,
         [data];
@@ -114,13 +113,12 @@ for j = 1:length(lat)
         println("There are errors!!")
         continue
     end
-
+    
     println("Extracting result...")
     h_mean = zeros(12)
     h_std  = zeros(12)
     Q_mean = zeros(12)
     Q_std  = zeros(12)
-
 
     data_h = sim1[:, h_key, :].value
     data_Q = sim1[:, Q_key, :].value
@@ -133,7 +131,6 @@ for j = 1:length(lat)
         Q_mean[i] = mean(data_Q[:, i, :])
         Q_std[i]  = std(data_Q[:, i, :])
     end
-
     Td_mean = mean(data_Td)
     Td_std  = std(data_Td)
 
@@ -149,7 +146,7 @@ for j = 1:length(lat)
     time_stat = Base.time() - beg_time
 
     global total_time += time_stat
-    println(format("[{:03d}] Stan fit: {:.2f} min. Total time: {:.2f} min. ", j, time_stat / 60.0, total_time / 60.0 ))
+    writelog(lon_i, "[{:03d}] Stan fit: {:.2f} min. Total time: {:.2f} min. ", j, time_stat / 60.0, total_time / 60.0 )
 
 end
 
