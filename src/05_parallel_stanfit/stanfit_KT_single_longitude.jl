@@ -79,8 +79,7 @@ for j = 1:length(lat)
         continue
     end
 
-    println(format("Doing lat[{:d}] = {:.2f}", j, lat[j]))
-    writelog(lon_i, "[{:03d}] Doing lat[{:d}] = {:.2f}", j, lon_i, j, lat[j] )
+    writelog(lon_i, "[lat_i = {:03d}] Doing lat[{:d}] = {:.2f}", j, lon_i, j, lat[j] )
 
     beg_time = Base.time()
 
@@ -99,7 +98,7 @@ for j = 1:length(lat)
     )
 
     init = Dict(
-        "h" => omlmax_mean
+        "h" => omlmax_mean * 0.0 .+ 30.0
     )
     
     rc, sim1 = stan(
@@ -149,7 +148,7 @@ for j = 1:length(lat)
     time_stat = Base.time() - beg_time
 
     global total_time += time_stat
-    writelog(lon_i, "[{:03d}] Stan fit: {:.2f} min. Total time: {:.2f} min. ", j, time_stat / 60.0, total_time / 60.0 )
+    writelog(lon_i, "[lat_i = {:03d}] Stan fit: {:.2f} min. Total time: {:.2f} min. ", j, time_stat / 60.0, total_time / 60.0 )
 
 end
 
