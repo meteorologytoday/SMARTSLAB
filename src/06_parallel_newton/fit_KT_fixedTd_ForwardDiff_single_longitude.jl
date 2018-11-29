@@ -53,7 +53,7 @@ for j = 1:length(lat)
     end
 
     @printf("Doing lon[%d]: %.2f, lat[%d], %.2f\n", lon_i, lon[lon_i], j, lat[j])
-    writelog(lon_i, "Doing lon[%d]: %.2f, lat[%d], %.2f\n", lon_i, lon[lon_i], j, lat[j])
+    writelog(lon_i, "Doing lon[{:d}]: {:.2f}, lat[{:d}], {:.2f}\n", lon_i, lon[lon_i], j, lat[j])
 
     test_β  = zeros(dtype, 2*period)
 
