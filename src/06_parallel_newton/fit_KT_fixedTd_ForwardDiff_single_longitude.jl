@@ -19,7 +19,7 @@ N = (years-2)*12
 period = 12
 beg_t  = period + 1
 
-θd = 273.15 * ρ * c_p
+
 init_h = zeros(dtype, 12) 
 init_Q = zeros(dtype, 12)
 
@@ -39,6 +39,16 @@ mkpath(tmp_dir)
 
 filename = format("{:03d}.jld", lon_i)
 filename = joinpath(main_dir, filename)
+
+# Experiment: Try if Td matters
+using NCDatasets
+cvt = x -> convert(Array{Float64}, nomissing(x, NaN))
+nc_filename = joinpath(data_path, "HMC_NCAR_5deg_init-omlmax_c4_s1000_w200.nc")
+ds = Dataset(nc_filename, "r")
+data_Td = cvt(ds["Td_mean"][:])
+close(ds)
+println("This fitting uses pre-exisiting Td from HMC_NCAR_5deg_init-omlmax_c4_s1000_w200.nc")
+
 
 println("This program is going to fit lon[", lon_i, "] = ", lon[lon_i])
 if isfile(filename)
@@ -64,14 +74,14 @@ for j = 1:length(lat)
     while continue_flag == ParamControl.STATUS_CONTINUE
         
         try
-            fit_β = NewtonApproach.fit(;
+            fit_β = NewtonApproachFixedTd.fit(;
                 N            = N,
                 period       = period,
                 beg_t        = beg_t,
                 Δt           = Δt,
                 init_h       = test_β[1:period],
                 init_Q       = test_β[period+1:2*period],
-                θd           = θd,
+                θd           = data_Td[lon_i] * ρ * c_p,
                 θ            = θ[lon_i, j, :],
                 S            = F[lon_i, j, :],
                 B            = B,

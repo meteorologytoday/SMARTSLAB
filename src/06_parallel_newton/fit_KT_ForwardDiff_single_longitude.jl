@@ -47,8 +47,6 @@ if isfile(filename)
     exit()
 end
 
-
-
 program_beg_time = Base.time()
 for j = 1:length(lat)
     if isnan(θ[lon_i, j, 1])
