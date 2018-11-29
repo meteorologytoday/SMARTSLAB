@@ -4,7 +4,7 @@
 include("../../lib/Newton.jl")
 
 
-module NewtonApproach 
+module NewtonApproachFixedTd 
 using ForwardDiff
 using ..NewtonMethod
 

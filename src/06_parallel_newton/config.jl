@@ -17,7 +17,7 @@ newton_fail_max = 100
 newton_η = 1e-2
 fail_count_max = 5
 
-param_path = collect(range(1.0, stop=0.2, length=9))
+param_path = collect(range(1.0, stop=0.0, length=9))
 
 exp_name = format("Newton_{}_init-zero", model_name)
 
