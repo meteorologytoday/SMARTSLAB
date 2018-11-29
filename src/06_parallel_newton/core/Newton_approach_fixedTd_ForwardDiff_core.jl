@@ -37,6 +37,9 @@ function fit(;
     a        :: T,
     max      :: Integer,
     η        :: T,
+    σ_ϵ      :: T,
+    σ_Q      :: T,
+    σ_h      :: T,
     verbose  :: Bool = false
 ) where T <: AbstractFloat
 
@@ -50,6 +53,9 @@ function fit(;
     rng1 = collect(beg_t:beg_t+N-1)
     rng2 = rng1 .+ 1
 
+    σ²_ϵ = σ_ϵ ^ 2
+    σ²_Q = σ_Q ^ 2
+    σ²_h = σ_h ^ 2
 
     # Extract fixed data
     _S_ph = (S[rng1] + S[rng2]) / 2.0
@@ -66,6 +72,46 @@ function fit(;
     x_mem[ 1       :   period] = init_h 
     x_mem[period+1 : 2*period] = init_Q
 
+    calLogPost = function(x)
+
+        local L = 0.0
+
+        h    = repeat(x[1:period],          outer=(reduced_years,))
+        Q_ph = repeat(x[period+1:2*period], outer=(reduced_years,))
+        h_p1 = circshift(h, -1)
+
+        h_p1 = circshift(h, -1)
+        h_ph = (h_p1 + h) / 2.0
+
+        ∂h∂t = (h_p1 - h) / Δt
+
+        we = ((∂h∂t .≥ 0) + (∂h∂t .< 0) .* a) .* ∂h∂t
+        
+        ϵ =  (
+            h_ph .* _∂θ∂t_ph
+            + (_θ_ph .- θd) .* we
+            -  _S_ph  - _B_ph - Q_ph
+        )
+
+        L += - ϵ' * ϵ / σ²_ϵ
+
+        # Add prior of h
+        L += - sum( ((h[1:period] .< 0) .* h[1:period]).^2 ) / σ²_h
+
+        # Add prior of Q
+        L += - sum( (Q_ph[1:period]).^2 ) / σ²_Q
+
+        #=
+        # Combined version (before applied product rule)
+        ϵ = (
+            (h_p1 .* _θ_p1 - h .* _θ) / Δt - _S_ph - _B_ph - Q_ph
+        )
+        =#
+
+        return L
+    end
+
+    #=
     calϵ2 = function(x)
 
         h    = repeat(x[1:period],          outer=(reduced_years,))
@@ -94,10 +140,14 @@ function fit(;
 
         return ϵ' * ϵ
     end
+    =#
 
     f_and_∇f = function(x)
-        f  = ForwardDiff.gradient(calϵ2, x)
-        ∇f = ForwardDiff.hessian( calϵ2, x)
+        #f  = ForwardDiff.gradient(calϵ2, x)
+        #∇f = ForwardDiff.hessian( calϵ2, x)
+
+        f  = ForwardDiff.gradient(calLogPost, x)
+        ∇f = ForwardDiff.hessian( calLogPost, x)
 
         return f, ∇f
     end
