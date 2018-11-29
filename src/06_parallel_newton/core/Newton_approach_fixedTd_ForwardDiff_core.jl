@@ -30,7 +30,7 @@ function fit(;
     Δt       :: T,
     init_h   :: Array{T},
     init_Q   :: Array{T},
-    init_θd  :: T,
+    θd       :: T,
     θ        :: Array{T},
     S        :: Array{T},
     B        :: Array{T},
@@ -65,15 +65,11 @@ function fit(;
 
     x_mem[ 1       :   period] = init_h 
     x_mem[period+1 : 2*period] = init_Q
-    x_mem[end] = init_θd
-
-
 
     calϵ2 = function(x)
 
         h    = repeat(x[1:period],          outer=(reduced_years,))
         Q_ph = repeat(x[period+1:2*period], outer=(reduced_years,))
-        θd   = x[end]
         h_p1 = circshift(h, -1)
 
         h_p1 = circshift(h, -1)

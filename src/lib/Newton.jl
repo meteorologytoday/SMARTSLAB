@@ -1,5 +1,7 @@
 module NewtonMethod
 
+using Printf
+
 export NotConvergeException, Newton
 
 struct NotConvergeException <: Exception
@@ -17,6 +19,10 @@ function fit(;
     local x = x0 * 1.0
     local if_converge = false
 
+
+    local rchg = 0.0
+    local prev_eulen_Δx = 0.0
+
     for i = 1:max
         if verbose
             println("Newton method iteration: ", i)
@@ -26,9 +32,12 @@ function fit(;
         Δx = - ∇f \ f
 
         eulen_Δx = (Δx' * Δx)^0.5
-        verbose && println("|Δx| = ", eulen_Δx)
-        if eulen_Δx >= η
+        rchg = (eulen_Δx - prev_eulen_Δx) / prev_eulen_Δx
+
+        verbose && @printf("|Δx| = %f, Old |Δx| = %f, relative chg = %f\n", eulen_Δx, prev_eulen_Δx, rchg)
+        if rchg >= η
             x += Δx
+            prev_eulen_Δx = eulen_Δx
         else
             if_converge = true
             break

@@ -155,7 +155,6 @@ end
 using JLD
 
 println("Output filename: ", filename)
-rm(filename, force=true)
 save(filename, Dict("β_mean" => β_mean, "β_std" => β_std))
 
 

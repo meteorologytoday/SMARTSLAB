@@ -11,6 +11,8 @@ using NCDatasets
 using Formatting
 using Statistics: mean, std
 
+include("config_plot.jl")
+
 
 function nanmean(x; dims)
     n = isnan.(x)
@@ -29,23 +31,7 @@ end
 
 =#
 
-cvt  = x -> convert(Array{Float64}, nomissing(x, NaN))
-stat = x -> (mean(x, dims=(1,))[1,:, :], std(x, dims=(1,))[1,:,:])
-
-# Reading data
-data_dir = normpath(joinpath( dirname(@__FILE__), "..", "..", "data"))
-img_dir  = normpath(joinpath( dirname(@__FILE__), "..", "..", "img"))
-nc_filename = joinpath(data_dir, "HMC_NCAR_5deg_init-omlmax_c4_s1000_w200.nc")
-complex_model_filename = joinpath(data_dir, "NCAR_CESM1-WACCM", "SMART_5deg_omlmax_Omon_CESM1-WACCM_piControl_r1i1p1_009601-029512.nc")
-
-ds = Dataset(nc_filename, "r")
-data_h  = ds["h_mean"][:] |> cvt
-data_Q  = ds["Q_mean"][:] |> cvt
-data_Td = (ds["Td_mean"][:] |> cvt) .- 273.15
-
-lat = ds["lat"][:] |> cvt
-lon = ds["lon"][:] |> cvt
-close(ds)
+#complex_model_filename = joinpath(data_dir, "NCAR_CESM1-WACCM", "SMART_5deg_omlmax_Omon_CESM1-WACCM_piControl_r1i1p1_009601-029512.nc")
 
 lon_rng = range(1, step=1, stop=length(lon)) |> collect
 

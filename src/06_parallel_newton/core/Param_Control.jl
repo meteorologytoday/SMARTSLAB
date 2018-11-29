@@ -1,3 +1,10 @@
+module ParamControl
+
+STATUS_ACCEPT   = 0
+STATUS_CONTINUE = 1
+STATUS_FAIL     = 2
+
+
 mutable struct param_controller{T <: AbstractFloat}
     beg_i           :: Integer
     end_i           :: Integer
@@ -39,12 +46,12 @@ function iterate_and_adjust!(
             
             if o.end_i == o.N
                 # If it is entirely complete
-                return false
+                return STATUS_ACCEPT
             else
                 # If not then move on to next interval
                 o.beg_i, o.end_i = o.end_i, o.end_i + 1
                 o.test_param[:] = o.params[o.end_i, :]
-                return true
+                return STATUS_CONTINUE
             end
         else
             #println("Does not touch endpoint")
@@ -53,21 +60,21 @@ function iterate_and_adjust!(
             o.saved_param[:] = o.test_param
             o.test_param[:]  = o.params[o.end_i, :]
 
-            return true
+            return STATUS_CONTINUE
         end
     else
         # If not converge
         o.fail_count += 1
         if o.fail_count >= o.fail_count_max
-            return false
+            return STATUS_FAIL
         else
             # Backup for a little
             o.test_param[:] = (o.saved_param[:] + o.test_param) / 2.0
             #println("Fail count: ", fail_count, "; ab_pair change to :", ab_pair)
-            return true
+            return STATUS_CONTINUE
         end
     end
 end
 
 
-
+end 

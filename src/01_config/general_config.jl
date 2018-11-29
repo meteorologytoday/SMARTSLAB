@@ -8,8 +8,9 @@ include("constants.jl")
 include("regions.jl")
 
 dtype = Float64
-data_path = joinpath(dirname(@__FILE__), "..", "..", "data")
-img_path = joinpath(dirname(@__FILE__), "..", "..", "img")
+root_path = normpath(joinpath(dirname(@__FILE__), "..", ".."))
+data_path = joinpath(root_path, "data")
+img_path = joinpath(root_path, "img")
 
 fn = Dict()
 fn_region = Dict()
