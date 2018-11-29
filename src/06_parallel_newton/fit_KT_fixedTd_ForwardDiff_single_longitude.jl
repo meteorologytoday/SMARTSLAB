@@ -78,6 +78,9 @@ for j = 1:length(lat)
                 a            = p_ctl.test_param[1],
                 max          = newton_fail_max,
                 η            = newton_η,
+                σ_ϵ          = 10.0,
+                σ_Q          = 100.0,
+                σ_h          = 1.0,
                 verbose      = true
             )
 

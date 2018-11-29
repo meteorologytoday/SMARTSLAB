@@ -3,11 +3,10 @@ using Formatting
 using NCDatasets
 
 include("config.jl")
-include("../01_config/general_config.jl")
 
 main_dir = joinpath(data_path, "fit_KT_fixedTd_ForwardDiff_single_longitude", exp_name)
 
-β_bestfit = zeros(dtype, length(lon), length(lat), 25)
+β_bestfit = zeros(dtype, length(lon), length(lat), 24)
 
 β_bestfit .= NaN
 
@@ -38,9 +37,9 @@ output_vars = [
     ],
 ]
 
-if length(β_bestfit == 25)
+if size(β_bestfit)[3] == 25
     push!(output_vars, [
-        "Td_mean", β_mean[:, :, 25], ("lon", "lat"), Dict(
+        "Td_mean", β_bestfit[:, :, 25], ("lon", "lat"), Dict(
         "long_name"=>"Mean of Deep Ocean Temperature",
         "units"=>"K",
         )
