@@ -32,7 +32,7 @@ function fit(;
         Δx = - ∇f \ f
 
         eulen_Δx = (Δx' * Δx)^0.5
-        rchg = (eulen_Δx - prev_eulen_Δx) / prev_eulen_Δx
+        rchg = abs((eulen_Δx - prev_eulen_Δx) / prev_eulen_Δx)
 
         verbose && @printf("|Δx| = %f, Old |Δx| = %f, relative chg = %f\n", eulen_Δx, prev_eulen_Δx, rchg)
         if rchg >= η

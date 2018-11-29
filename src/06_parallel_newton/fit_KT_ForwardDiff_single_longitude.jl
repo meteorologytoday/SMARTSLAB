@@ -1,5 +1,6 @@
-include("./core/Newton_approach_fixedTd_ForwardDiff_core.jl")
+include("./core/Newton_approach_ForwardDiff_core.jl")
 include("./core/Param_Control.jl")
+include("./core/LR_flexible_slab_core.jl")
 include("config.jl")
 
 using .ParamControl
@@ -59,12 +60,13 @@ for j = 1:length(lat)
 
     test_β  = zeros(dtype, 2*period+1)
 
-    test_β[1:2*period] = R_shallow_water!(
+    test_β[1:2*period] = LR_shallow_water!(
         period = period,
         F = F[lon_i, j, :],
         θ = θ[lon_i, j, :] .- init_θd,
         Δt = Δt
     )
+
 
     test_β[end] = init_θd
 
@@ -83,7 +85,6 @@ for j = 1:length(lat)
                 init_h       = test_β[1:period],
                 init_Q       = test_β[period+1:2*period],
                 init_θd      = test_β[end],
-                θd           = θd,
                 θ            = θ[lon_i, j, :],
                 S            = F[lon_i, j, :],
                 B            = B,
@@ -100,7 +101,6 @@ for j = 1:length(lat)
             )
 
             continue_flag = ParamControl.iterate_and_adjust!(p_ctl, true)
-            
             test_β[:] = fit_β
 
         catch err

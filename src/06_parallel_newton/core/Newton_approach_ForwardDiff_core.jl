@@ -71,10 +71,11 @@ function fit(;
     _∂θ∂t_ph = (_θ_p1 - _θ) / Δt
     _θ_ph    = (_θ_p1 + _θ) / 2.0
 
-    x_mem = zeros(T, 2*period)
+    x_mem = zeros(T, 2*period + 1)
 
-    x_mem[ 1       :   period] = init_h 
-    x_mem[period+1 : 2*period] = init_Q
+    x_mem[ 1        :   period] = init_h 
+    x_mem[period+1  : 2*period] = init_Q
+    x_mem[2*period+1]           = init_θd
 
     calLogPost = function(x)
 
@@ -104,7 +105,7 @@ function fit(;
         # Add prior of h
         _h = h[1:period]
         L += - sum( ((_h .< h_rng[1]) .* (_h .- h_rng[1])).^2 ) / σ²_h
-        L += - sum( ((_h >. h_rng[2]) .* (_h .- h_rng[2])).^2 ) / σ²_h
+        L += - sum( ((_h .> h_rng[2]) .* (_h .- h_rng[2])).^2 ) / σ²_h
 
         # Add prior of Q
         L += - sum( (Q_ph[1:period]).^2 ) / σ²_Q

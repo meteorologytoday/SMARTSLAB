@@ -31,7 +31,6 @@ rng2 = rng1 .+ 1
 
 ϕ .= 0.0
 
-#println(length(θ))
 for t = 1:N
 
     # ϕ_h
@@ -52,21 +51,8 @@ end
 _F =  (F[rng1] + F[rng2]) / 2.0
 β = ϕ \ _F
 
-#_F =  F[rng1]
-#println(_F)
-# Solve normal equation
 
-
-
-
-#println(ϕ * β - _F)
-
-
-#∂θs∂t = ((circshift(θs, -1) - θs)[beg_t:beg_t+N-1]) / Δt
-#println(sum(_F .* ∂θs∂t) / sum(∂θs∂t.^2.0))
-#println(_F ./ ∂θs∂t)
-
-return β[1:period], β[period+1:end]
+return β
 
 end
 

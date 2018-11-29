@@ -3,7 +3,7 @@ include("./core/Param_Control.jl")
 include("config.jl")
 
 using .ParamControl
-using .NewtonApproach
+using .NewtonApproachFixedTd
 using .NewtonMethod
 using Formatting
 using Statistics: mean, std
