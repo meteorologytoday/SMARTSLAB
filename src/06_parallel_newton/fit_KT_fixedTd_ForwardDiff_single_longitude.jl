@@ -46,6 +46,7 @@ cvt = x -> convert(Array{Float64}, nomissing(x, NaN))
 nc_filename = joinpath(data_path, "HMC_NCAR_5deg_init-omlmax_c4_s1000_w200.nc")
 ds = Dataset(nc_filename, "r")
 data_Td = cvt(ds["Td_mean"][:])
+θd_mean = nanmean(data_Td; dims=(1,))[1,:] * ρ * c_p
 close(ds)
 println("This fitting uses pre-exisiting Td from HMC_NCAR_5deg_init-omlmax_c4_s1000_w200.nc")
 
@@ -81,17 +82,18 @@ for j = 1:length(lat)
                 Δt           = Δt,
                 init_h       = test_β[1:period],
                 init_Q       = test_β[period+1:2*period],
-                θd           = data_Td[lon_i] * ρ * c_p,
+                θd           = θd_mean[j] ,
                 θ            = θ[lon_i, j, :],
                 S            = F[lon_i, j, :],
                 B            = B,
                 a            = p_ctl.test_param[1],
                 max          = newton_fail_max,
                 η            = newton_η,
-                σ_ϵ          = 10.0,
-                σ_Q          = 100.0,
-                σ_h          = 1.0,
-                verbose      = true
+                σ_ϵ          = σ_ϵ,
+                σ_Q          = σ_Q,
+                σ_h          = σ_h,
+                h_rng        = h_rng, 
+                verbose      = verbose
             )
 
             continue_flag = ParamControl.iterate_and_adjust!(p_ctl, true)

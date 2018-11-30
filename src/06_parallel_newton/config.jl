@@ -12,10 +12,27 @@ using Formatting
 # 
 # sbatch --job-name, --output, --cpus-per-task, --time, --array
 
+function nanmean(x; dims)
+    n = isnan.(x)
+
+    y = copy(x)
+    y[n] .= 0.0
+
+    return sum(y; dims=dims) ./ sum(1 .- n; dims=dims)
+end
+
+
 # Newton setting
 newton_fail_max = 100
 newton_η = 1e-2
 fail_count_max = 5
+
+# Posterior control
+σ_ϵ          = 10.0
+σ_Q          = 100.0
+σ_h          = 1.0
+h_rng        = [0, 5000.0]
+verbose      = true
 
 param_path = collect(range(1.0, stop=0.0, length=9))
 
