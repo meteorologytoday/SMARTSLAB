@@ -41,7 +41,7 @@ function fit(;
     σ_Q      :: T,
     σ_h      :: T,
     h_rng    :: Array{T},
-    verbose  :: Bool = false
+    verbose  :: Bool = false,
 ) where T <: AbstractFloat
 
 
@@ -57,6 +57,7 @@ function fit(;
     σ²_ϵ = σ_ϵ ^ 2
     σ²_Q = σ_Q ^ 2
     σ²_h = σ_h ^ 2
+
 
     # Extract fixed data
     _S_ph = (S[rng1] + S[rng2]) / 2.0
@@ -86,7 +87,8 @@ function fit(;
 
         ∂h∂t = (h_p1 - h) / Δt
 
-        we = ((∂h∂t .≥ 0) + (∂h∂t .< 0) .* a) .* ∂h∂t
+        we = (∂h∂t .> 0) .* a .* ∂h∂t
+        #we = ((∂h∂t .≥ 0) + (∂h∂t .< 0) .* a) .* ∂h∂t
         
         ϵ =  (
             h_ph .* _∂θ∂t_ph
@@ -103,7 +105,6 @@ function fit(;
 
         # Add prior of Q
         L += - sum( (Q_ph[1:period]).^2 ) / σ²_Q
-
 
         #=
         # Combined version (before applied product rule)
