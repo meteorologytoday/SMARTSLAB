@@ -4,7 +4,7 @@
 include("../../lib/Newton.jl")
 
 
-module NewtonApproachFixedTd 
+module NewtonApproach 
 using ForwardDiff
 using ..NewtonMethod
 
@@ -30,7 +30,7 @@ function fit(;
     Δt       :: T,
     init_h   :: Array{T},
     init_Q   :: Array{T},
-    θd       :: T,
+    init_θd  :: T,
     θ        :: Array{T},
     S        :: Array{T},
     B        :: Array{T},
@@ -40,8 +40,10 @@ function fit(;
     σ_ϵ      :: T,
     σ_Q      :: T,
     σ_h      :: T,
+    σ_θd     :: T,
     h_rng    :: Array{T},
-    verbose  :: Bool = false,
+    θd_rng   :: Array{T},
+    verbose  :: Bool = false
 ) where T <: AbstractFloat
 
 
@@ -54,10 +56,10 @@ function fit(;
     rng1 = collect(beg_t:beg_t+N-1)
     rng2 = rng1 .+ 1
 
-    σ²_ϵ = σ_ϵ ^ 2
-    σ²_Q = σ_Q ^ 2
-    σ²_h = σ_h ^ 2
-
+    σ²_ϵ  = σ_ϵ  ^ 2
+    σ²_Q  = σ_Q  ^ 2
+    σ²_h  = σ_h  ^ 2
+    σ²_θd = σ_θd ^ 2
 
     # Extract fixed data
     _S_ph = (S[rng1] + S[rng2]) / 2.0
@@ -69,10 +71,11 @@ function fit(;
     _∂θ∂t_ph = (_θ_p1 - _θ) / Δt
     _θ_ph    = (_θ_p1 + _θ) / 2.0
 
-    x_mem = zeros(T, 2*period)
+    x_mem = zeros(T, 2*period + 1)
 
-    x_mem[ 1       :   period] = init_h 
-    x_mem[period+1 : 2*period] = init_Q
+    x_mem[ 1        :   period] = init_h 
+    x_mem[period+1  : 2*period] = init_Q
+    x_mem[2*period+1]           = init_θd
 
     calLogPost = function(x)
 
@@ -80,6 +83,8 @@ function fit(;
 
         h    = repeat(x[1:period],          outer=(reduced_years,))
         Q_ph = repeat(x[period+1:2*period], outer=(reduced_years,))
+        θd   = x[end]
+
         h_p1 = circshift(h, -1)
 
         h_p1 = circshift(h, -1)
@@ -87,8 +92,7 @@ function fit(;
 
         ∂h∂t = (h_p1 - h) / Δt
 
-        we = (∂h∂t .> 0) .* a .* ∂h∂t
-        #we = ((∂h∂t .≥ 0) + (∂h∂t .< 0) .* a) .* ∂h∂t
+        we = ((∂h∂t .≥ 0) + (∂h∂t .< 0) .* a) .* ∂h∂t
         
         ϵ =  (
             h_ph .* _∂θ∂t_ph
@@ -105,6 +109,10 @@ function fit(;
 
         # Add prior of Q
         L += - sum( (Q_ph[1:period]).^2 ) / σ²_Q
+
+        # Add prior of θd
+        L += (θd < θd_rng[1]) ? - (θd - θd_rng[1])^2.0 / σ²_θd : 0.0
+        L += (θd > θd_rng[2]) ? - (θd - θd_rng[2])^2.0 / σ²_θd : 0.0
 
         #=
         # Combined version (before applied product rule)

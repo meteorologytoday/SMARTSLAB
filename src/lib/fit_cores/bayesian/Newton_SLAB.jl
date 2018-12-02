@@ -1,10 +1,7 @@
-#using LinearAlgebra
-#using Statistics
-
-include("../../lib/Newton.jl")
+include("../../../lib/Newton.jl")
 
 
-module NewtonApproachFixedTd 
+module BayesianNewtonSLAB 
 using ForwardDiff
 using ..NewtonMethod
 
@@ -30,11 +27,8 @@ function fit(;
     Δt       :: T,
     init_h   :: Array{T},
     init_Q   :: Array{T},
-    θd       :: T,
     θ        :: Array{T},
-    S        :: Array{T},
-    B        :: Array{T},
-    a        :: T,
+    F        :: Array{T},
     max      :: Integer,
     η        :: T,
     σ_ϵ      :: T,
@@ -60,8 +54,7 @@ function fit(;
 
 
     # Extract fixed data
-    _S_ph = (S[rng1] + S[rng2]) / 2.0
-    _B_ph = (B[rng1] + B[rng2]) / 2.0
+    _F_ph = (F[rng1] + F[rng2]) / 2.0
 
     _θ    = θ[rng1]
     _θ_p1 = θ[rng2]
@@ -70,7 +63,6 @@ function fit(;
     _θ_ph    = (_θ_p1 + _θ) / 2.0
 
     x_mem = zeros(T, 2*period)
-
     x_mem[ 1       :   period] = init_h 
     x_mem[period+1 : 2*period] = init_Q
 
@@ -85,15 +77,8 @@ function fit(;
         h_p1 = circshift(h, -1)
         h_ph = (h_p1 + h) / 2.0
 
-        ∂h∂t = (h_p1 - h) / Δt
-
-        we = (∂h∂t .> 0) .* a .* ∂h∂t
-        #we = ((∂h∂t .≥ 0) + (∂h∂t .< 0) .* a) .* ∂h∂t
-        
         ϵ =  (
-            h_ph .* _∂θ∂t_ph
-            + (_θ_ph .- θd) .* we
-            -  _S_ph  - _B_ph - Q_ph
+            h_ph .* _∂θ∂t_ph -  _F_ph - Q_ph
         )
 
         L += - ϵ' * ϵ / σ²_ϵ
@@ -105,13 +90,6 @@ function fit(;
 
         # Add prior of Q
         L += - sum( (Q_ph[1:period]).^2 ) / σ²_Q
-
-        #=
-        # Combined version (before applied product rule)
-        ϵ = (
-            (h_p1 .* _θ_p1 - h .* _θ) / Δt - _S_ph - _B_ph - Q_ph
-        )
-        =#
 
         return L
     end

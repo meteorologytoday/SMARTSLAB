@@ -1,4 +1,3 @@
-include("./core/SLAB_core.jl")
 include("./core/Newton_approach_fixedTd_ForwardDiff_core.jl")
 include("./core/Param_Control.jl")
 include("config.jl")
@@ -69,15 +68,6 @@ for j = 1:length(lat)
 
     test_β  = zeros(dtype, 2*period)
 
-    # Get a initial estimate from purely SLAB
-    test_β[1:2*period] = SLAB!(
-        period = period,
-        F      = F[lon_i, j, :],
-        θ      = θ[lon_i, j, :],
-        Δt     = Δt,
-        reinterpolate = true        
-    )
-    
     p_ctl = ParamControl.param_controller(param_path, fail_count_max)
 
     continue_flag = ParamControl.STATUS_CONTINUE
