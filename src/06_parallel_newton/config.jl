@@ -23,7 +23,7 @@ end
 
 
 # Newton setting
-newton_fail_max = 100
+newton_fail_max = 20
 newton_η = 1e-2
 fail_count_max = 5
 
