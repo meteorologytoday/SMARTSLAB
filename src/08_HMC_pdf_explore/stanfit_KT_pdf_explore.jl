@@ -8,12 +8,11 @@ using Formatting
 using NCDatasets
 import Statistics: mean, std
 
-if length(ARGS) != 2
-    throw(ErrorException("Length of ARGS must be 2. That is the lon/lat indices."))
+if length(ARGS) != 1
+    throw(ErrorException("Length of ARGS must be 1. That is the lon index."))
 end
 
 lon_i = parse(Int, ARGS[1])
-lat_i = parse(Int, ARGS[2])
 
 # construct data folder
 main_dir = joinpath(data_path, splitext(basename(@__FILE__))[1], exp_name)
@@ -112,9 +111,6 @@ Q_std  = zeros(12)
 data_h = sim1[:, h_key, :].value
 data_Q = sim1[:, Q_key, :].value
 data_Td = sim1[:, ["theta_d"], :].value / ρ / c_p
-
-println(size(data_h))
-println(size(data_Td))
 
 β[:,  1:12, :] = data_h
 β[:, 13:24, :] = data_Q
