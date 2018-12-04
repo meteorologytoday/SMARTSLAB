@@ -38,7 +38,7 @@ println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
 using Stan
 @printf("done\n")
 
-model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
+model_script = read(joinpath(dirname(@__FILE__), "..", "lib", "STAN_code", "KT.stan"), String)
 stanmodel = Stanmodel(
     name="KT",
     nchains=nchains,
