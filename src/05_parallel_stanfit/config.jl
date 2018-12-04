@@ -13,15 +13,15 @@ using Formatting
 model_name = "NCAR_5deg"
 
 nchains     = 4
-num_samples = 1000
-num_warmup  = 200
+num_samples = 100
+num_warmup  = 20
 
 #nchains     = 2
 #num_samples = 10
 #num_warmup  = 2
 
 
-exp_name = format("HMC_{}_init-30m_c{:d}_s{:d}_w{:d}", model_name, nchains, num_samples, num_warmup)
+exp_name = format("HMC_{}_init-omlmax_c{:d}_s{:d}_w{:d}", model_name, nchains, num_samples, num_warmup)
 
 
 default_log_file = joinpath("/export/home/tienyiah/projects/SMARTSLAB", format("{}.log", exp_name))

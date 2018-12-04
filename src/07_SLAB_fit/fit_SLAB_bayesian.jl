@@ -45,11 +45,11 @@ for i = 1:lon_len, j = 1:lat_len
         F  = F[i, j, :],
         θ  = θ[i, j, :],
         Δt = Δt,
-        reinterpolate = true
+        reinterpolate = false
     )
 
     try 
-        β[i, j, :] = BayesianNewtonSLAB.fit(;
+        _β = BayesianNewtonSLAB.fit(;
                     N            = N,
                     period       = period,
                     beg_t        = beg_t,
@@ -66,6 +66,13 @@ for i = 1:lon_len, j = 1:lat_len
                     h_rng        = h_rng,
                     verbose      = verbose
         )
+
+        # since now the last month (12.5) is actually 0.5, we
+        # need to shift β
+
+        β[i,j,       1 :   period] = circshift(_β[       1:  period], 1)
+        β[i,j,period+1 : 2*period] = circshift(_β[period+1:2*period], 1)
+    
     catch err
         if isa(err, NewtonMethod.NotConvergeException)
             println("Does not converge.")
@@ -73,10 +80,13 @@ for i = 1:lon_len, j = 1:lat_len
             throw(err)
         end
     end
+
+
+
 end
 time_end = Base.time()
 
-print(format("The fitting uses {:.2f} min.\n", (time_end - time_beg) / 3600.0))
+print(format("The fitting uses {:.2f} min.\n", (time_end - time_beg) / 60.0))
 
 
 nan2missing!(β)
@@ -105,7 +115,7 @@ defDim(ds,"time", 12)
 defDim(ds,"lat", length(lat))
 defDim(ds,"lon", length(lon))
 
-defVar(ds, "time", Float64, ("time",))[:] = collect(1:12)
+defVar(ds, "time", Float64, ("time",))[:] = collect(1:12) .- 0.5
 defVar(ds, "lat", Float64, ("lat",))[:] = lat
 defVar(ds, "lon", Float64, ("lon",))[:] = lon
 

@@ -1,6 +1,6 @@
 model_name = "NCAR_5deg"
 
-include("../lib/fit_cores/LR_SLAB_core.jl")
+include("../lib/fit_cores/linear_regression/SLAB.jl")
 include("../01_config/general_config.jl")
 
 using Formatting
@@ -23,14 +23,17 @@ for i = 1:lon_len, j = 1:lat_len
         continue
     end
 
-    β[i, j, :] = SLAB!(
+    _β = SLAB!(
         period = period,
         F  = F[i, j, :],
         θ  = θ[i, j, :],
         Δt = Δt,
-        reinterpolate = true
+        reinterpolate = false
     )
 
+    β[i,j,       1 :   period] = circshift(_β[       1:  period], 1)
+    β[i,j,period+1 : 2*period] = circshift(_β[period+1:2*period], 1)
+ 
 end
 
 nan2missing!(β)
@@ -59,7 +62,7 @@ defDim(ds,"time", 12)
 defDim(ds,"lat", length(lat))
 defDim(ds,"lon", length(lon))
 
-defVar(ds, "time", Float64, ("time",))[:] = collect(1:12)
+defVar(ds, "time", Float64, ("time",))[:] = collect(1:12) .- 0.5
 defVar(ds, "lat", Float64, ("lat",))[:] = lat
 defVar(ds, "lon", Float64, ("lon",))[:] = lon
 

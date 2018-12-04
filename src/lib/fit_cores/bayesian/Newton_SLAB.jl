@@ -66,6 +66,7 @@ function fit(;
     x_mem[ 1       :   period] = init_h 
     x_mem[period+1 : 2*period] = init_Q
 
+    #=
     calLogPost = function(x)
 
         local L = 0.0
@@ -85,6 +86,31 @@ function fit(;
 
         # Add prior of h
         _h = h[1:period]
+        L += - sum( ((_h .< h_rng[1]) .* (_h .- h_rng[1])).^2 ) / σ²_h
+        L += - sum( ((_h .> h_rng[2]) .* (_h .- h_rng[2])).^2 ) / σ²_h
+
+        # Add prior of Q
+        L += - sum( (Q_ph[1:period]).^2 ) / σ²_Q
+
+        return L
+    end
+    =#
+
+    calLogPost = function(x)
+
+        local L = 0.0
+
+        h_ph = repeat(x[1:period],          outer=(reduced_years,))
+        Q_ph = repeat(x[period+1:2*period], outer=(reduced_years,))
+
+        ϵ =  (
+            h_ph .* _∂θ∂t_ph -  _F_ph - Q_ph
+        )
+
+        L += - ϵ' * ϵ / σ²_ϵ
+
+        # Add prior of h
+        _h = h_ph[1:period]
         L += - sum( ((_h .< h_rng[1]) .* (_h .- h_rng[1])).^2 ) / σ²_h
         L += - sum( ((_h .> h_rng[2]) .* (_h .- h_rng[2])).^2 ) / σ²_h
 
