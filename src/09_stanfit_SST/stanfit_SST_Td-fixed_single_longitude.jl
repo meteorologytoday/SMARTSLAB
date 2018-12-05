@@ -14,6 +14,9 @@ end
 
 lon_i = parse(Int, ARGS[1])
 
+# Deep water temperature
+θd = 273.15 * ρ * c_p
+
 # construct data folder
 main_dir = joinpath(data_path, splitext(basename(@__FILE__))[1], exp_name)
 tmp_dir = joinpath(main_dir, "stan_tmp", format("{:03d}", lon_i))
@@ -35,9 +38,9 @@ using Stan
 @printf("done\n")
 
 
-model_script = read(joinpath(dirname(@__FILE__), "KT.stan"), String)
+model_script = read(joinpath(dirname(@__FILE__), "..", "lib", "STAN_code", "KT_SST_Td-fixed.stan"), String)
 stanmodel = Stanmodel(
-    name="KT",
+    name="KT_SST_Td-fixed",
     nchains=nchains,
     num_samples=num_samples,
     num_warmup=num_warmup,
@@ -48,11 +51,10 @@ stanmodel = Stanmodel(
 #display(stanmodel)
 
 h_key = [ format("h.{}", i) for i = 1:12 ]
-Q_key = [ format("Q_s.{}", i) for i = 1:12 ]
+Q_key = [ format("Q.{}", i) for i = 1:12 ]
 
 data = Dict()
 time_stat = Dict()
-
 
 total_time = 0.0
 
@@ -63,7 +65,6 @@ total_time = 0.0
 β_std  .= NaN
 
 crop_range = (lon_i, :, :)
-
 
 omlmax = readModelVar("omlmax", crop_range)
 θ      = readModelVar("tos", crop_range) * (ρ * c_p)
@@ -86,12 +87,13 @@ for j = 1:length(lat)
     println("init_omlmax: ", omlmax_mean)
 
     data = Dict(
-        "N"           => N, 
+        "raw_N"       => N, 
         "period"      => 12, 
         "dt"          => Δt, 
-        "theta"       => θ[j, :], 
-        "F"           => F[j, :],
-        "epsilon_std" => 10.0,
+        "theta_d"     => θd, 
+        "raw_theta"   => θ[j, :], 
+        "raw_F"       => F[j, :],
+        "theta_std"   => 1.0,
         "Q_std"       => 100.0,
     )
 
@@ -119,7 +121,6 @@ for j = 1:length(lat)
 
     data_h = sim1[:, h_key, :].value
     data_Q = sim1[:, Q_key, :].value
-    data_Td = sim1[:, ["theta_d"], :].value / ρ / c_p
 
     for i = 1:12
         h_mean[i] = mean(data_h[:, i, :])
@@ -128,20 +129,15 @@ for j = 1:length(lat)
         Q_mean[i] = mean(data_Q[:, i, :])
         Q_std[i]  = std(data_Q[:, i, :])
     end
-    Td_mean = mean(data_Td)
-    Td_std  = std(data_Td)
 
     println("h_mean", h_mean)
     println("Q_mean", Q_mean)
-    println("Td_mean", Td_mean)
 
     β_mean[j,  1:12] = h_mean
     β_mean[j, 13:24] = Q_mean
-    β_mean[j,    25] = Td_mean
 
     β_std[j,  1:12] = h_std
     β_std[j, 13:24] = Q_std
-    β_std[j,    25] = Td_std
 
     time_stat = Base.time() - beg_time
 
