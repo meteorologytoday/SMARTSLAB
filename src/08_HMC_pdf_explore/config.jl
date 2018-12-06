@@ -13,8 +13,8 @@ using Formatting
 model_name = "NCAR_5deg"
 
 nchains     = 4
-num_samples = 100
-num_warmup  = 20
+num_samples = 1000
+num_warmup  = 200
 
 #nchains     = 2
 #num_samples = 10
