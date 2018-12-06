@@ -21,7 +21,7 @@ num_samples = 10
 num_warmup  = 2
 
 
-exp_name = format("HMC_{}_init-omlmax_c{:d}_s{:d}_w{:d}", model_name, nchains, num_samples, num_warmup)
+exp_name = format("HMC_SST_Td-fixed_{}_init-30m_c{:d}_s{:d}_w{:d}", model_name, nchains, num_samples, num_warmup)
 
 
 
