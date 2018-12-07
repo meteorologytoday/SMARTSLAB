@@ -97,7 +97,7 @@ model{
     dhdt[period] = ( h[1] - h[period-1] ) / dtt;
 
     for(i in 1:period) { 
-        we[i] = (dhdt[i] > 0) * dhdt[i];
+        we[i] = (dhdt[i] > 0) ? dhdt[i] : 0.0;
     }
 
     h_extended  = repeat_fill(h,  period, trimmed_N);

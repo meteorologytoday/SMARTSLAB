@@ -64,7 +64,7 @@ total_time = 0.0
 β_mean .= NaN
 β_std  .= NaN
 
-crop_range = (lon_i, :, :)
+crop_range = (lon_i, :, 1:1200) # first 100 years
 
 omlmax = readModelVar("omlmax", crop_range)
 θ      = readModelVar("tos", crop_range) * (ρ * c_p)

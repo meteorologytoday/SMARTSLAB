@@ -12,9 +12,9 @@ using Formatting
 
 model_name = "NCAR_5deg"
 
-nchains     = 4
-num_samples = 1000
-num_warmup  = 200
+nchains     = 1 
+num_samples = 5000
+num_warmup  = 20
 
 
 exp_name = format("HMC_SST_Td-fixed_{}_init-30m_c{:d}_s{:d}_w{:d}", model_name, nchains, num_samples, num_warmup)
