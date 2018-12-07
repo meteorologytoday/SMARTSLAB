@@ -1,6 +1,7 @@
 include("config.jl")
 @printf("Running %s\n", basename(@__FILE__))
 using PyPlot
+using MultivariateStats
 
 idx = (38, 29)
 

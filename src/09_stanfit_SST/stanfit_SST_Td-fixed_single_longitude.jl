@@ -1,8 +1,6 @@
 program_beg_time = Base.time()
 
 include("config.jl")
-include("../01_config/general_config.jl")
-
 using Printf
 using Formatting
 using NCDatasets
@@ -92,8 +90,8 @@ for j = 1:length(lat)
         "theta_d"     => θd, 
         "raw_theta"   => θ[j, :], 
         "raw_F"       => F[j, :],
-        "theta_std"   => θ_std,
-        "Q_std"       => Q_std,
+        "theta_std"   => σ_θ,
+        "Q_std"       => σ_Q,
     )
 
     init = Dict(
