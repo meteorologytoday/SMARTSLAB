@@ -16,6 +16,10 @@ nchains     = 1
 num_samples = 5000
 num_warmup  = 20
 
+θd = 273.15 * ρ * c_p
+θ_std = 1.0 * ρ * c_p
+Q_std = 100.0
+
 
 exp_name = format("HMC_SST_Td-fixed_{}_init-30m_c{:d}_s{:d}_w{:d}", model_name, nchains, num_samples, num_warmup)
 

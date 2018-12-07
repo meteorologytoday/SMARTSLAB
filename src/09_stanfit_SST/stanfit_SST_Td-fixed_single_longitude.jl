@@ -14,8 +14,7 @@ end
 
 lon_i = parse(Int, ARGS[1])
 
-# Deep water temperature
-θd = 273.15 * ρ * c_p
+
 
 # construct data folder
 main_dir = joinpath(data_path, splitext(basename(@__FILE__))[1], exp_name)
@@ -93,8 +92,8 @@ for j = 1:length(lat)
         "theta_d"     => θd, 
         "raw_theta"   => θ[j, :], 
         "raw_F"       => F[j, :],
-        "theta_std"   => 1.0,
-        "Q_std"       => 100.0,
+        "theta_std"   => θ_std,
+        "Q_std"       => Q_std,
     )
 
     init = Dict(
