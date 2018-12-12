@@ -25,7 +25,7 @@ function SpectralVariance(
 N = length(y)
 c = FFTW.fft(detrend(y))
 
-return ((abs.(c)).^2)[1: floor(Int, N / 2.0)]
+return ((abs.(c)).^2)[2: 1+floor(Int, N / 2.0)]
 
 end
 
