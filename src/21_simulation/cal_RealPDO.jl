@@ -5,17 +5,24 @@ using NCDatasets
 using Statistics: mean, std
 using .AnalyzeTimeseries
 
-model_name = "NCAR_5deg"
-include("../01_config/general_config.jl")
-include("config.jl")
+include("../01_config/paths.jl")
 
-
+dtype = Float64
 # Read PDO mode
+PDO_fn = joinpath(data_path, "PDO_EOFs.nc")
+ds = Dataset(PDO_fn,"r")
+lat = nomissing(ds["latitude"][:], NaN)
+lon = nomissing(ds["longitude"][:], NaN)
 weight  = repeat(cos.(lat' * π / 180.0);outer=(length(lon), 1)) 
 sum_weight = nansum(weight)
-PDO_fn = joinpath(data_path, "PDO_EOFs_5deg.nc")
-ds = Dataset(PDO_fn,"r")
+
 PDO_mode = weight .* nomissing(ds["EOFs"][:, :, 1], NaN)
+close(ds)
+
+# Read Reanalysis SST data
+SST_fn = joinpath(data_path, "SST_1870-2017_0-360.nc")
+ds = Dataset(SST_fn,"r")
+SST = nomissing(ds["SST"][:, :, :], NaN)
 close(ds)
 
 
@@ -62,45 +69,20 @@ function calPDOIndex(SST)
 end
 
 
-obs_SST = readModelVar("tos", (:, :, init_time:init_time+sim_len-1))
-ds = Dataset(sim_nc_filename, "r")
-sim_SST = nomissing(ds["SST"][:], NaN)
-close(ds)
-
-rmMeanStates!(obs_SST; period=12)
-rmMeanStates!(sim_SST; period=12)
-
-obs_PDO = calPDOIndex(obs_SST)
-sim_PDO = calPDOIndex(sim_SST)
-
-
-using JLD
-jld_fn = joinpath(data_path, "simulated_and_cpld_PDO.jld")
-save(jld_fn, Dict(
-    "obs_PDO" => obs_PDO,
-    "sim_PDO" => sim_PDO,
-))
-
-println(size(obs_PDO))
-println(size(sim_PDO))
+rmMeanStates!(SST; period=12)
+PDO = calPDOIndex(SST)
 
 using PyPlot
+ntime = size(SST)[3]
+nyrs  = Int(ntime / 12)
+t = 1870.0 .+ collect(Float64, 0:ntime-1) / 12.0
+plt[:plot](t, PDO)
 
-nmons  = size(obs_SST)[3]
-nyrs   = Int(nmons / 12)
-t_mon  = collect(Float64, 0:nmons-1) / 12.0
-t_yr   = collect(Float64, 0:nyrs-1)
+t = 1870.0 .+ collect(Float64, 0:nyrs-1)
+PDO_annual_avg = mean(reshape(PDO, 12, :), dims=1)[1,:]
+plt[:plot](t, PDO_annual_avg)
 
+t = 1870.0 .+ collect(Float64, 0:nyrs-1)
+PDO_annual_avg = mean(reshape(PDO, 12, :), dims=1)[1,:]
+plt[:plot](t, PDO_annual_avg)
 
-fig, ax = plt[:subplots](2, 1,sharex=true)
-
-obs_PDO_annual_avg = mean(reshape(obs_PDO, 12, :), dims=1)[1,:]
-sim_PDO_annual_avg = mean(reshape(sim_PDO, 12, :), dims=1)[1,:]
-
-ax[1][:plot](t_mon, obs_PDO)
-ax[1][:plot](t_yr,  obs_PDO_annual_avg)
-
-ax[2][:plot](t_mon, sim_PDO)
-ax[2][:plot](t_yr,  sim_PDO_annual_avg)
-
-plt[:show]()

@@ -60,6 +60,8 @@ function run(;
     F = repeat_fill(F, ret_len)
     h = repeat_fill(h, ret_len)
     ∂h∂t = repeat_fill(∂h∂t, ret_len)
+    #∂h∂t[:] .= 10.0 / Δt
+
 
     θ[1] = θ_init 
     for i = 1 : ret_len-1
