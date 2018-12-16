@@ -3,14 +3,12 @@ using Printf
 using Formatting
 @printf("# Running %s\n", basename(@__FILE__))
 
+include("paths.jl")
 include("models.jl")
 include("constants.jl")
 include("regions.jl")
 
 dtype = Float64
-root_path = normpath(joinpath(dirname(@__FILE__), "..", ".."))
-data_path = joinpath(root_path, "data")
-img_path = joinpath(root_path, "img")
 
 fn = Dict()
 fn_region = Dict()

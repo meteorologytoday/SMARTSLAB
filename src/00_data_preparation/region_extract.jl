@@ -2,6 +2,7 @@ include("../01_config/general_config.jl")
 include("../01_config/regions.jl")
 
 using Formatting
+using NCDatasets
 
 function nanmean(x)
     mask = isfinite.(x)

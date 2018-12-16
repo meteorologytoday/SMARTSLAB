@@ -1,9 +1,21 @@
 
 
 regions = Dict(
-    "PDO" => ([115.0, 255.0],     [20.0, 65.0]),
-    "Nino34" => ([190.0, 240.0], [-5.0,  5.0]),
-    "AMO" => ([280.0, 360.0],     [ 0.0, 65.0]),
+    "NPAC-1" => ([150.0, 225.0], [ 10.0,  25.0]),
+    "NPAC-2" => ([150.0, 225.0], [ 25.0,  50.0]),
+    "EPAC"   => ([215.0, 270.0], [-10.0,  10.0]),
+    "WPAC"   => ([135.0, 215.0], [-10.0,  10.0]),
+    "SPAC-1" => ([170.0, 255.0], [-25.0, -10.0]),
+    "SPAC-2" => ([170.0, 255.0], [-50.0, -25.0]),
+    "NATL-1" => ([290.0, 340.0], [ 10.0,  25.0]),
+    "NATL-2" => ([290.0, 340.0], [ 25.0,  50.0]),
+    "MATL"   => ([325.0, 350.0], [-10.0,  10.0]),
+    "SATL-1" => ([325.0, 360.0], [-25.0, -10.0]),
+    "SATL-2" => ([325.0, 360.0], [-50.0, -25.0]),
+    "NIND"   => ([ 60.0,  90.0], [ 10.0,  15.0]),
+    "MIND"   => ([ 60.0,  90.0], [-10.0,  10.0]),
+    "SIND-1" => ([ 60.0,  90.0], [-25.0, -10.0]),
+    "SIND-2" => ([ 60.0,  90.0], [-50.0, -25.0]),
 )
 
 
@@ -40,27 +52,6 @@ function region_mask(lon, lat, name)
            (lat_rng[1] .<= llat      ) .&
            (llat       .< lat_rng[2] )
 end
-
-function nanmean(x)
-    mask = isfinite.(x)
-    return sum(x[mask]) / sum(mask)
-end
-
-
-function region_mean(name, data)
-    println("Region:", name)
-    mask = region_mask(lon, lat, name)
-    time_len = size(x)[3]
-    new_x = zeros(eltype(x), time_len)
-    
-    for i in 1:length(new_x)
-        new_x[i] = nanmean(x[:, :, i][mask])
-    end
-
-    return new_x
-end
-
-
 
 for k in keys(regions)
     println(k, " => ", regions[k])
