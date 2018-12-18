@@ -24,7 +24,10 @@ transformed data {
     int<lower=2*period+1> trimmed_N = raw_N - 2 * period;
     
     real true_future_theta[trimmed_N];
-    real F[trimmed_N];
+
+    // "_s" means staggered grid point
+    real F_s[trimmed_N];
+    real theta_s[trimmed_N];
     real theta[trimmed_N];
 
     if(raw_N % period != 0) {
@@ -35,49 +38,57 @@ transformed data {
     // because we are making predictioins of next month. So the compared answer is shifted
     // by 1.
     true_future_theta = raw_theta[period+2:period+2+trimmed_N-1];
-    
     theta             = raw_theta[period+1:period+1+trimmed_N-1];
-    F                 =     raw_F[period+1:period+1+trimmed_N-1];
 
+    for (i in 1:trimmed_N) {
+        F_s[i]     = (raw_F[i + period] + raw_F[i + period + 1]) / 2.0;
+        theta_s[i] = (raw_theta[i + period] + raw_theta[i + period + 1]) / 2.0;
+    }
 }
 
 parameters {
     real<lower=1, upper=5000> h[period];
-    real Q[period];
+    real Q_s[period];
 }
 
 model{
 
+    real h_s[period];
+    real dhdt_s[period];
+    real we_s[period];
 
-    real h_extended[trimmed_N];
-    real we_extended[trimmed_N];
-    real Q_extended[trimmed_N];
+    real h_s_extended[trimmed_N];
+    real we_s_extended[trimmed_N];
+    real Q_s_extended[trimmed_N];
     real epsilon[trimmed_N];
 
-    real dhdt[period];
-    real we[period];
-
-    for(i in 2:period) {
-        dhdt[i] = (h[i] - h[i-1]) / dt;
+    for(i in 1:period-1) {
+        h_s[i] = (h[i] + h[i+1]) / 2.0;
     }
-    dhdt[1] = ( h[1] - h[period  ] ) / dt;
+    h_s[period] = ( h[period] + h[1] ) / 2.0;
+
+
+    for(i in 1:period-1) {
+        dhdt_s[i] = (h[i+1] - h[i]) / dt;
+    }
+    dhdt_s[period] = ( h[1] - h[period] ) / dt;
 
     for(i in 1:period) { 
-        we[i] = (dhdt[i] > 0) ? dhdt[i] : 0.0;
+        we_s[i] = (dhdt_s[i] > 0) ? dhdt_s[i] : 0.0;
     }
 
-    h_extended  = repeat_fill(h,  period, trimmed_N);
-    we_extended = repeat_fill(we, period, trimmed_N);
-    Q_extended  = repeat_fill(Q,  period, trimmed_N);
+    h_s_extended  = repeat_fill(h_s,  period, trimmed_N);
+    we_s_extended = repeat_fill(we_s, period, trimmed_N);
+    Q_s_extended  = repeat_fill(Q_s,  period, trimmed_N);
 
     for(i in 1:trimmed_N) {
-        epsilon[i] = true_future_theta[i] -
-         ( theta[i] + (F[i] + Q_extended[i] - (theta[i] - theta_d) * we_extended[i]) / h_extended[i] * dt );
+        epsilon[i] = true_future_theta[i] - 
+         ( theta[i] + (F_s[i] + Q_s_extended[i] - (theta_s[i] - theta_d) * we_s_extended[i]) / h_s_extended[i] * dt );
     }
 
     // Prior of Q
     for(i in 1:period) {
-        Q[i] ~ normal(0, Q_std);
+        Q_s[i] ~ normal(0, Q_std);
     }
     
     // Likelihood
