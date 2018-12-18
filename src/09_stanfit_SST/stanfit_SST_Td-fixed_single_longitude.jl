@@ -35,7 +35,7 @@ using Stan
 @printf("done\n")
 
 
-model_script = read(joinpath(dirname(@__FILE__), "..", "lib", "STAN_code", "KT_SST_Td-fixed.stan"), String)
+model_script = read(joinpath(dirname(@__FILE__), "..", "STAN_code", "KT_SST_Td-fixed.stan"), String)
 stanmodel = Stanmodel(
     name="KT_SST_Td-fixed",
     nchains=nchains,

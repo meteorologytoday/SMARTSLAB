@@ -1,10 +1,21 @@
 include("config.jl")
-include("KTSimulation.jl")
+include("../lib/simulate_cores/KTSimulation.jl")
 
 using NCDatasets
 using .KTSimulation
 
-SST = zeros(dtype, length(lon), length(lat), sim_len)
+hQ_nc_filename = "HMC_SST_Td-fixed_NCAR_5deg_init-30m_c4_s1000_w200.nc" 
+hQ_nc_filename = normpath(joinpath(data_path, hQ_nc_filename)) 
+
+sim_nc_filename = format("21_KTsimulate_{}.nc", splitext(basename(hQ_nc_filename))[1])
+sim_nc_filename = joinpath(data_path, sim_nc_filename)
+
+
+sim_len = 1200
+θd = 273.15 * ρ * c_p
+
+
+SST = zeros(dtype, length(lon), length(lat), sim_time)
 SST .= NaN
 
 ds = Dataset(hQ_nc_filename,"r")
@@ -20,7 +31,6 @@ F = readModelVar("hfds")
 println("Size of h / Q : ", size(h))
 
 for i = 1:length(lon), j = 1:length(lat)
-
     if isnan(h[i, j, 1])
         continue
     end
@@ -29,14 +39,14 @@ for i = 1:length(lon), j = 1:length(lat)
         θ_init  = θ[i, j, init_time],
         θd      = θd,
         Δt      = Δt,
-        F       = F[i, j, init_time:init_time + sim_len - 1],
+        F       = F[i, j, init_time:init_time + total_sim_time - 1],
         Q       = Q[i, j, :],
         h       = h[i, j, :],
         period  = 12,
-        ret_len = sim_len,
+        ret_len = total_sim_time,
     )
 
-    SST[i, j, :] = data["θ"]
+    SST[i, j, :] = data["θ"][warmup_time + 1 : warmup_time + sim_time]
 
 end
 
