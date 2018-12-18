@@ -1,5 +1,5 @@
 include("config.jl")
-include("../lib/simulate_cores/KTSimulation.jl")
+include("../lib/simulate_cores/SOM.jl")
 
 using NCDatasets
 using .KTSimulation
