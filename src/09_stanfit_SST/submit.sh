@@ -10,6 +10,6 @@
 #SBATCH --mail-user=tienyiah@uci.edu
 #
 #
-#SBATCH --array=1-73
+#SBATCH --array=1-72
 
 srun julia stanfit_SST_Td-fixed_single_longitude.jl $SLURM_ARRAY_TASK_ID
