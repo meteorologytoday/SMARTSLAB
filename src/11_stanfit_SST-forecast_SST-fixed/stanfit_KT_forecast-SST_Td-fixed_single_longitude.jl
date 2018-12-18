@@ -12,10 +12,10 @@ end
 
 lon_i = parse(Int, ARGS[1])
 
-
+FILE_noext = splitext(basename(@__FILE__))[1]
 
 # construct data folder
-main_dir = joinpath(data_path, splitext(basename(@__FILE__))[1], exp_name)
+main_dir = joinpath(data_path, FILE_noext, exp_name)
 tmp_dir = joinpath(main_dir, "stan_tmp", format("{:03d}", lon_i))
 mkpath(main_dir)
 mkpath(tmp_dir)
@@ -34,10 +34,10 @@ println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
 using Stan
 @printf("done\n")
 
-
-model_script = read(joinpath(dirname(@__FILE__), "..", "STAN_code", "KT_SST_Td-fixed.stan"), String)
+script_path = normpath(joinpath(dirname(@__FILE__), "..", "STAN_code", "KT_forecast-SST_Td-fixed.stan"))
+model_script = read(script_path, String)
 stanmodel = Stanmodel(
-    name="KT_SST_Td-fixed",
+    name=FILE_noext,
     nchains=nchains,
     num_samples=num_samples,
     num_warmup=num_warmup,
@@ -55,8 +55,8 @@ time_stat = Dict()
 
 total_time = 0.0
 
-β_mean = zeros(dtype, length(lat), 25)
-β_std = zeros(dtype, length(lat), 25)
+β_mean = zeros(dtype, length(lat), 24)
+β_std = zeros(dtype, length(lat), 24)
 
 β_mean .= NaN
 β_std  .= NaN

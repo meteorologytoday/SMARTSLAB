@@ -13,16 +13,16 @@ using Formatting
 model_name = "NCAR_5deg"
 include("../01_config/general_config.jl")
 
-nchains     = 4
-num_samples = 100
-num_warmup  = 20
+nchains     = 1
+num_samples = 10
+num_warmup  = 2
 
 θd = 273.15 * ρ * c_p
 σ_θ = 1.0 * ρ * c_p
 σ_Q = 100.0
 
 
-exp_name = format("HMC_SST_Td-fixed_{}_init-30m_c{:d}_s{:d}_w{:d}", model_name, nchains, num_samples, num_warmup)
+exp_name = format("HMC_SST-nonforecast_Td-fixed_{}_init-30m_c{:d}_s{:d}_w{:d}", model_name, nchains, num_samples, num_warmup)
 
 
 

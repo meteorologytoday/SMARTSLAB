@@ -5,9 +5,14 @@ using NCDatasets
 include("config.jl")
 include("../01_config/general_config.jl")
 
-main_dir = joinpath(data_path, "stanfit_SST_Td-fixed_single_longitude", exp_name)
+target_file = "stanfit_forecast-SST_Td-fixed_single_longitude.jl"
+target_file = "stanfit_nonforecast-SST_Td-fixed_single_longitude.jl"
 
-β_mean = zeros(dtype, length(lon), length(lat), 25)
+println("We are merging output from file: ", target_file)
+
+main_dir = joinpath(data_path, splitext(target_file)[1], exp_name)
+
+β_mean = zeros(dtype, length(lon), length(lat), 24)
 β_std  = copy(β_mean)
 
 β_mean .= NaN
@@ -50,11 +55,6 @@ for o in (
         "units"=>"W / m^2",
         )
     ], [
-        "Td_mean", β_mean[:, :, 25], ("lon", "lat"), Dict(
-        "long_name"=>"Mean of Deep Ocean Temperature",
-        "units"=>"K",
-        )
-    ], [
         "h_std", β_std[:, :, 1:12], ("lon", "lat", "time"), Dict(
         "long_name"=>"Standard Deviation of Mixed-layer Depth",
         "units"=>"m",
@@ -64,12 +64,7 @@ for o in (
         "long_name"=>"Standard Deviation of Q-flux",
         "units"=>"W / m^2",
         )
-    ], [
-        "Td_std", β_std[:, :, 25], ("lon", "lat"), Dict(
-        "long_name"=>"Standard Deviation of Deep Ocean Temperature",
-        "units"=>"K",
-        )
-    ]
+    ],
 )
     varname, vardata, vardims, varatts = o
     println("Writing ", varname, " with size: ", size(vardata), " ; dim: ", vardims)
