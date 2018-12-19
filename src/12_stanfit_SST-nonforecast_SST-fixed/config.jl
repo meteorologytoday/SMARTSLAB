@@ -13,9 +13,9 @@ using Formatting
 model_name = "NCAR_5deg"
 include("../01_config/general_config.jl")
 
-nchains     = 1
-num_samples = 10
-num_warmup  = 2
+nchains     = 4
+num_samples = 1000
+num_warmup  = 200
 
 θd = 273.15 * ρ * c_p
 σ_θ = 1.0 * ρ * c_p
