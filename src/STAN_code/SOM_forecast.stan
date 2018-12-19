@@ -43,39 +43,22 @@ transformed data {
 parameters {
     real<lower=1, upper=5000> h[period];
     real Q[period];
-    real<lower=1027.0*3985.0*263.15, upper=1027.0*3985.0*283.15> theta_d; // -10 ~ +10 deg C  
 }
 
 model{
 
 
     real h_extended[trimmed_N];
-    real we_extended[trimmed_N];
     real Q_extended[trimmed_N];
     real epsilon[trimmed_N];
 
-    real dhdt[period];
-    real we[period];
-
-    for(i in 2:period) {
-        dhdt[i] = (h[i] - h[i-1]) / dt;
-    }
-    dhdt[1] = ( h[1] - h[period  ] ) / dt;
-
-    for(i in 1:period) { 
-        we[i] = (dhdt[i] > 0) ? dhdt[i] : 0.0;
-    }
-
     h_extended  = repeat_fill(h,  period, trimmed_N);
-    we_extended = repeat_fill(we, period, trimmed_N);
     Q_extended  = repeat_fill(Q,  period, trimmed_N);
 
     for(i in 1:trimmed_N) {
         epsilon[i] = true_future_theta[i] -
-         ( theta[i] + (F[i] + Q_extended[i] - (theta[i] - theta_d) * we_extended[i]) / h_extended[i] * dt );
+         ( theta[i] + (F[i] + Q_extended[i]) / h_extended[i] * dt );
     }
-
-    // Assume flat prior of theta_d : do nothing
 
     // Prior of Q
     for(i in 1:period) {
