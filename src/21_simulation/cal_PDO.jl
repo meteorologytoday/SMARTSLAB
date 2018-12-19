@@ -29,20 +29,23 @@ function rmMeanStates!(SST; period=12)
     end
 
     # detrend and remove annual cycle
-
+    
+    #=
     # Find global trend
     gSST = zeros(dtype, size(SST)[3])
     for i = 1:length(gSST)
         weight .* SST[:, :, i]
         gSST[i] = nansum(weight .* SST[:, :, i]) / sum_weight
-    end 
-
+    end
+    =# 
+    
     # Detrend
-    x = collect(dtype, 1:length(gSST))
-    β = LinearRegression(x, gSST)
-    trend = β[1] .+ β[2]*x
+
+    x = collect(dtype, 1:ntime)
     for i=1:length(lon), j=1:length(lat)
-        SST[i, j, :] -= trend
+
+        β = LinearRegression(x, SST[i, j, :])
+        SST[i, j, :] -= β[1] .+ β[2] * x
     end
     
     # Remove seasonal cycle
@@ -61,8 +64,8 @@ function calPDOIndex(SST)
     return (index .- mean(index)) / std(index)
 end
 
-
-obs_SST = readModelVar("tos", (:, :, init_time:init_time+sim_len-1))
+obs_SST = readModelVar("tos", (:, :, init_time:init_time+sim_time-1))
+sim_nc_filename = joinpath(data_path, "21_KTsimulate_HMC_SST_Td-fixed_NCAR_5deg_init-30m_c4_s1000_w200.nc")
 ds = Dataset(sim_nc_filename, "r")
 sim_SST = nomissing(ds["SST"][:], NaN)
 close(ds)
