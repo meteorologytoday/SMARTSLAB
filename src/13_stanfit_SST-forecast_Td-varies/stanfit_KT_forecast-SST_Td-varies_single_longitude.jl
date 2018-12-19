@@ -34,7 +34,7 @@ println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
 using Stan
 @printf("done\n")
 
-script_path = normpath(joinpath(dirname(@__FILE__), "..", "STAN_code", "KT_forecast-SST_Td-fixed.stan"))
+script_path = normpath(joinpath(dirname(@__FILE__), "..", "STAN_code", "KT_forecast-SST_Td-varies.stan"))
 model_script = read(script_path, String)
 stanmodel = Stanmodel(
     name=FILE_noext,
