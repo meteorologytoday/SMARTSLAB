@@ -12,4 +12,4 @@
 #
 #SBATCH --array=1-72
 
-srun julia stanfit_SST_Td-fixed_single_longitude.jl $SLURM_ARRAY_TASK_ID
+srun julia stanfit_KT_nonforecast-SST_Td-fixed_single_longitude.jl $SLURM_ARRAY_TASK_ID
