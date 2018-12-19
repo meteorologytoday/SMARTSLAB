@@ -55,8 +55,8 @@ time_stat = Dict()
 
 total_time = 0.0
 
-β_mean = zeros(dtype, length(lat), 24)
-β_std = zeros(dtype, length(lat), 24)
+β_mean = zeros(dtype, length(lat), 25)
+β_std = zeros(dtype, length(lat), 25)
 
 β_mean .= NaN
 β_std  .= NaN
@@ -118,6 +118,7 @@ for j = 1:length(lat)
 
     data_h = sim1[:, h_key, :].value
     data_Q = sim1[:, Q_key, :].value
+    data_Td = sim1[:, ["theta_d"], :].value / ρ / c_p
 
     for i = 1:12
         h_mean[i] = mean(data_h[:, i, :])
@@ -127,14 +128,19 @@ for j = 1:length(lat)
         Q_std[i]  = std(data_Q[:, i, :])
     end
 
+    Td_mean = mean(data_Td)
+    Td_std  = std(data_Td)
+
     println("h_mean", h_mean)
     println("Q_mean", Q_mean)
 
     β_mean[j,  1:12] = h_mean
     β_mean[j, 13:24] = Q_mean
+    β_mean[j,    25] = Td_mean
 
     β_std[j,  1:12] = h_std
     β_std[j, 13:24] = Q_std
+    β_std[j,    25] = Td_std
 
     time_stat = Base.time() - beg_time
 

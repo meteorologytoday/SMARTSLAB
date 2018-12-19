@@ -64,6 +64,16 @@ for o in (
         "long_name"=>"Standard Deviation of Q-flux",
         "units"=>"W / m^2",
         )
+    ], [
+        "Td_mean", β_mean[:, :, 25], ("lon", "lat"), Dict(
+        "long_name"=>"Mean of Deep Ocean Temperature",
+        "units"=>"K",
+        )
+    ], [
+        "Td_std", β_std[:, :, 25], ("lon", "lat"), Dict(
+        "long_name"=>"Standard Deviation of Deep Ocean Temperature",
+        "units"=>"K",
+        )
     ],
 )
     varname, vardata, vardims, varatts = o
