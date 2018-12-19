@@ -5,6 +5,7 @@ using NCDatasets
 include("config.jl")
 include("../01_config/general_config.jl")
 
+target_file = "stanfit_forecast-SST_Td-fixed_single_longitude.jl"
 target_file = "stanfit_nonforecast-SST_Td-fixed_single_longitude.jl"
 
 println("We are merging output from file: ", target_file)
