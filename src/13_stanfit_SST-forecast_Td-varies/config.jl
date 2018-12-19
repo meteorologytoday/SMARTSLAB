@@ -14,8 +14,8 @@ model_name = "NCAR_5deg"
 include("../01_config/general_config.jl")
 
 nchains     = 4
-num_samples = 100
-num_warmup  = 20
+num_samples = 1000
+num_warmup  = 200
 
 θd = 273.15 * ρ * c_p
 σ_θ = 1.0 * ρ * c_p
