@@ -3,14 +3,11 @@ using Formatting
 using NCDatasets
 
 include("config.jl")
-include("../01_config/general_config.jl")
+include("../../01_config/general_config.jl")
 
-target_file = "stanfit_forecast-SST_Td-fixed_single_longitude.jl"
-target_file = "stanfit_nonforecast-SST_Td-fixed_single_longitude.jl"
+target_file = "single_longitude.jl"
 
-println("We are merging output from file: ", target_file)
-
-main_dir = joinpath(data_path, splitext(target_file)[1], exp_name)
+println("We are merging output of exp: ", exp_name)
 
 β_mean = zeros(dtype, length(lon), length(lat), 24)
 β_std  = copy(β_mean)

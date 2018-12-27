@@ -12,12 +12,8 @@ end
 
 lon_i = parse(Int, ARGS[1])
 
-FILE_noext = splitext(basename(@__FILE__))[1]
-
-# construct data folder
-main_dir = joinpath(data_path, FILE_noext, exp_name)
+# construct tmp folder
 tmp_dir = joinpath(main_dir, "stan_tmp", format("{:03d}", lon_i))
-mkpath(main_dir)
 mkpath(tmp_dir)
 
 filename = format("{:03d}.jld", lon_i)
@@ -34,10 +30,10 @@ println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
 using Stan
 @printf("done\n")
 
-script_path = normpath(joinpath(dirname(@__FILE__), "..", "STAN_code", "forecast", "MLM2L_strong.stan"))
+script_path = normpath(joinpath(dirname(@__FILE__), "..", "..", "STAN_code", "forecast", "MLM2L_strong.stan"))
 model_script = read(script_path, String)
 stanmodel = Stanmodel(
-    name=FILE_noext,
+    name="STAN",
     nchains=nchains,
     num_samples=num_samples,
     num_warmup=num_warmup,

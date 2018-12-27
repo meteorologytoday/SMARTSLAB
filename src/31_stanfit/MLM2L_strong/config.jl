@@ -24,8 +24,10 @@ num_warmup  = 4
 
 exp_name = format("stanfit_MLM2L_strong_{}_c{:d}_s{:d}_w{:d}", model_name, nchains, num_samples, num_warmup)
 
+main_dir = joinpath(data_path, exp_name)
+mkpath(main_dir)
 
-default_log_file = normpath(joinpath(dirname(@__FILE__), "..", "..", "logs", format("{}.log", exp_name)))
+default_log_file = normpath(joinpath(dirname(@__FILE__), format("progress.log", exp_name)))
 function writelog(lon_i, fmt, params...; ending="\n", log_file=default_log_file)
     open(log_file, "a") do f
         write(f, format("[lon_i = {}] ", lon_i))
