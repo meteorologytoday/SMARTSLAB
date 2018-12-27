@@ -64,15 +64,19 @@ function calPDOIndex(SST)
     return (index .- mean(index)) / std(index)
 end
 
+obs_F   = readModelVar("hfds", (:, :, init_time:init_time+sim_time-1))
 obs_SST = readModelVar("tos", (:, :, init_time:init_time+sim_time-1))
+
 sim_nc_filename = joinpath(data_path, "21_KTsimulate_HMC_SST_Td-fixed_NCAR_5deg_init-30m_c4_s1000_w200.nc")
 ds = Dataset(sim_nc_filename, "r")
 sim_SST = nomissing(ds["SST"][:], NaN)
 close(ds)
 
+rmMeanStates!(obs_F  ; period=12)
 rmMeanStates!(obs_SST; period=12)
 rmMeanStates!(sim_SST; period=12)
 
+obs_F_PDO = calPDOIndex(obs_F)
 obs_PDO = calPDOIndex(obs_SST)
 sim_PDO = calPDOIndex(sim_SST)
 
@@ -80,30 +84,11 @@ sim_PDO = calPDOIndex(sim_SST)
 using JLD
 jld_fn = joinpath(data_path, "simulated_and_cpld_PDO.jld")
 save(jld_fn, Dict(
+    "obs_F_PDO" => obs_F_PDO,
     "obs_PDO" => obs_PDO,
     "sim_PDO" => sim_PDO,
 ))
 
-println(size(obs_PDO))
-println(size(sim_PDO))
 
-using PyPlot
+            
 
-nmons  = size(obs_SST)[3]
-nyrs   = Int(nmons / 12)
-t_mon  = collect(Float64, 0:nmons-1) / 12.0
-t_yr   = collect(Float64, 0:nyrs-1)
-
-
-fig, ax = plt[:subplots](2, 1,sharex=true)
-
-obs_PDO_annual_avg = mean(reshape(obs_PDO, 12, :), dims=1)[1,:]
-sim_PDO_annual_avg = mean(reshape(sim_PDO, 12, :), dims=1)[1,:]
-
-ax[1][:plot](t_mon, obs_PDO)
-ax[1][:plot](t_yr,  obs_PDO_annual_avg)
-
-ax[2][:plot](t_mon, sim_PDO)
-ax[2][:plot](t_yr,  sim_PDO_annual_avg)
-
-plt[:show]()

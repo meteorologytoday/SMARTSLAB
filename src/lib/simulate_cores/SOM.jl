@@ -1,16 +1,15 @@
 
-module KTSimulation
+module SOMSimulation
 
 function f(;
     θ    :: G,
-    θd   :: G,
     F    :: G,
     Q    :: G,  
     h    :: G,
     ∂h∂t :: G
 ) where G <: AbstractFloat
 
-    return ((F + Q) - (θ - θd) * (∂h∂t > 0.0) * ∂h∂t) / h
+    return (F + Q) / h
 
 end
 
@@ -37,14 +36,8 @@ function repeat_fill(
 end
 
 
-function linear_interpolate(a::Array{G, 1}, i::G) where G <: AbstractFloat
-    return (i - floor(i)) * a[ceil(Int, i)] + (ceil(i) - i) * a[floor(Int, i)]
-end
-
-
 function run(;
     θ_init  :: G,
-    θd      :: G,
     Δt      :: G,
     F       :: Array{G, 1},
     Q       :: Array{G, 1},
@@ -53,15 +46,10 @@ function run(;
     ret_len :: Int
 ) where G <: AbstractFloat
 
-    ∂h∂t = (circshift(h, -1) - circshift(h, 1)) / (2.0 * Δt)
- 
     θ = zeros(G, ret_len)
     Q = repeat_fill(Q, ret_len)
     F = repeat_fill(F, ret_len)
     h = repeat_fill(h, ret_len)
-    ∂h∂t = repeat_fill(∂h∂t, ret_len)
-    #∂h∂t[:] .= 10.0 / Δt
-
 
     θ[1] = θ_init 
     for i = 1 : ret_len-1
@@ -73,7 +61,6 @@ function run(;
             F    = F[i],
             Q    = Q[i],  
             h    = h[i],
-            ∂h∂t = ∂h∂t[i]
         )
 
         θ[i+1] = θ[i] + Δθ
@@ -85,7 +72,6 @@ function run(;
         "F" => F,
         "Q" => Q,
         "h" => h,
-        "∂h∂t" => ∂h∂t,
     )
 end
 

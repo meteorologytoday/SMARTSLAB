@@ -1,5 +1,5 @@
 
-module KTSimulation
+module KTMSimulation
 
 function f(;
     θ    :: G,
