@@ -1,26 +1,39 @@
 module MLMML
+using Printf
 
-#α   =
-#β   =  
-#c_p =
-#ρ   =
+α   = 1.0
+β   = 1.0
+c_p = 3985.0   # J / kg / K
+ρ   = 1027.0   # kg / m^3
+
+"""
+    printConstants()
+
+# Description
+This function prints all constants used in this module.
+"""
+function printConstants()
+    @printf("α   = %8.2f. Logrithmic expansion of density ρ as function of temperature T.\n", α)
+    @printf("β   = %8.2f. Logrithmic expansion of density ρ as function of salinity S.\n", β)
+    @printf("c_p = %8.2f J/kg/K. Specific heat of seawater.\n", c_p)
+    @printf("ρ   = %8.2f kg/m^3. Mass density of seawater.\n", ρ)
+
+end
 
 
 
 struct OceanColumn
-    N  :: Integer     # number of layers
-    zs :: Array{Float64, 1} # position of (N+1) grid points
-    S  :: Array{Float64, 1} # Salinity of N layers
-    T  :: Array{Float64, 1} # Temperature of N layers
-    h  :: Float64           # Mixed-layer depth
-    γ  :: Float64
+    N      :: Integer           # Number of layers
+    zs     :: Array{Float64, 1} # Position of (N+1) grid points
+    b      :: Array{Float64, 1} # Buoyancy of N layers
+    h      :: Float64           # Mixed-layer depth
+    DO_beg :: Float64           # First layer that is not ML
 
     function OceanColumn(zs::Array{Float64, 1})
         N = length(zs) - 1
-        S = zeros(Float64, N)
-        T = zeros(Float64, N)
+        b = zeros(Float64, N)
         h = 0.0
-        return new(N, zs, S, T, h)
+        return new(N, zs, b, h)
     end
 end
 
@@ -54,7 +67,6 @@ function calWeOrMLD(;
         throw(ErrorException("Δb cannot be negative."))
     end
 
-    # 因為Gasper的正負號跟NiilerKraus不一致，需要重新推導
     Term1 = 2.0 * m * fric_u^3.0
     Term2 = 0.5 * (B * (1.0 + n) - abs(B) * (1.0 - n))
     RHS = Term1 + h * Term2
@@ -67,8 +79,68 @@ function calWeOrMLD(;
         # very surface
         
         h_diag = - Term1 / Term2
-        return :MLD, h_diag
+        return :MLD, h_diaggg
     end
+end
+
+
+
+
+function getWindStress(;
+    u10::Float64
+)
+
+    return u10 * 1e-3 * ( (u10 < 25.0) 
+                    ? 2.7 + 0.142 * u10 + 0.0764 * u10^2.0
+                    : u10 * (2.16 + 0.5406 * (1.0 - exp(- (u10 - 25.0) / 7.5)))
+    )
+
+end
+
+
+"""
+
+    stepOceanColumn!(;
+        oc  :: OceanColumn,
+        ua  :: Float64,
+        B0  :: Float64,
+        J0  :: Float64,
+        Δt  :: Float64 
+    )
+
+# Description
+This function update the OceanColumn forward in time.
+
+"""
+function stepOceanColumn!(;
+    oc  :: OceanColumn,
+    ua  :: Float64, # Currently assumed to be u10
+    B0  :: Float64,
+    J0  :: Float64,
+    Δt  :: Float64 
+)
+    # Pseudo code
+    # Current using only Euler forward scheme:
+    # 1. Determine h at t+Δt
+    # 2. Determine how many layers are going to be
+    #    taken away by ML.
+    # 3. Cal b at t+Δt for both ML and DO
+    # 4. Detect if it is buoyantly stable.
+    #    Correct it (i.e. convection) if it is not.
+    # 5. If convection happens, redetermine h.
+
+
+    # Find Δb
+    Δb = b[1] - b[oc.DO_beg]
+    fric_u = √(getWindStress(u10=ua) / ρ)
+    flag, val = calWeOrMLD(; h=oc.h, B=B0+J0, fric_u=fric_u, Δb=Δb) 
+
+
+
+   
+    
+    
+
 end
 
 end
