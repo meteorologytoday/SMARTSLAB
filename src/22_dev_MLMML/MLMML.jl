@@ -25,15 +25,15 @@ end
 struct OceanColumn
     N      :: Integer           # Number of layers
     zs     :: Array{Float64, 1} # Position of (N+1) grid points
-    b      :: Array{Float64, 1} # Buoyancy of N layers
+    bs     :: Array{Float64, 1} # Buoyancy of N layers
     h      :: Float64           # Mixed-layer depth
-    DO_beg :: Float64           # First layer that is not ML
+    FLDO   :: Float64           # First layer of deep ocean
 
     function OceanColumn(zs::Array{Float64, 1})
-        N = length(zs) - 1
-        b = zeros(Float64, N)
-        h = 0.0
-        return new(N, zs, b, h)
+        N  = length(zs) - 1
+        bs = zeros(Float64, N)
+        h  = 0.0
+        return new(N, zs, bs, h)
     end
 end
 
@@ -79,12 +79,44 @@ function calWeOrMLD(;
         # very surface
         
         h_diag = - Term1 / Term2
-        return :MLD, h_diaggg
+        return :MLD, h_diag
     end
 end
 
+function getIntegratedBuoyancy(;
+    zs :: Array{Float64,1},
+    bs :: Array{Float64,1},
+    h  :: Float64
+)
+    FLDO = getFLDO(zs=zs, h=h)
+    
+    sum_b = 0.0
+    sum_b += h * bs[1]
 
+    # FLDO is squeezed
+    sum_b += bs[FLDO] * (zs[FLDO+1] - h) 
 
+    # Rest layers
+    # (currently using loop for readability)
+    for i = FLDO+1 : length(bs)
+        sum_b += bs[i] * (zs[i+1] - zs[i])
+    end
+
+    return sum_b
+end
+
+function getFLDO(;
+    zs :: Array{Float64,1},
+    h  :: Float64
+)
+    for i = 1:length(zs)-1
+        if h < (zs[i+1] - zs[1])
+            return i
+        end
+    end
+
+    return -1
+end
 
 function getWindStress(;
     u10::Float64
@@ -129,17 +161,40 @@ function stepOceanColumn!(;
     #    Correct it (i.e. convection) if it is not.
     # 5. If convection happens, redetermine h.
 
+    # p.s.: Need to examine carefully about the
+    #       conservation of buoyancy in water column
 
     # Find Δb
     Δb = b[1] - b[oc.DO_beg]
     fric_u = √(getWindStress(u10=ua) / ρ)
     flag, val = calWeOrMLD(; h=oc.h, B=B0+J0, fric_u=fric_u, Δb=Δb) 
 
+    # 1
+    if flag == :MLD
+        we = 0.0
+        new_h  = val
+    else if flag == :we
+        we = val 
+        new_h += Δt * we
+    end
+    
+    # 2
+    new_FLDO = getFLDO(zs=oc.zs, h=new_h)
+
+    # 3
+
+    # ML
+    #      i: calc
+    dbdt = - 1.0 / oc.h * (B0 + J0 + we * Δb)
+    new_b += dbdt * Δt 
+    
+    # DO
+    #      i: determine gradient of b flux
+    #     ii: determine gradient of 
+    for i 
 
 
-   
-    
-    
+    # 4
 
 end
 
