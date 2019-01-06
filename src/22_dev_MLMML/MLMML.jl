@@ -84,25 +84,42 @@ function calWeOrMLD(;
 end
 
 function getIntegratedBuoyancy(;
-    zs :: Array{Float64,1},
-    bs :: Array{Float64,1},
-    h  :: Float64
+    zs       :: Array{Float64,1},
+    bs       :: Array{Float64,1},
+    h        :: Float64,
+    target_z :: Float64,
 )
-    FLDO = getFLDO(zs=zs, h=h)
-    
+
+    if target_z < zs[end]
+        throw(ErrorException("target_z cannot be deeper than the minimum of zs."))
+    end
+
+    if -target_z < h
+       return bs[1] * ( - target_z )
+    end
+
     sum_b = 0.0
     sum_b += h * bs[1]
 
-    # FLDO is squeezed
-    sum_b += bs[FLDO] * (zs[FLDO+1] - h) 
+    FLDO = getFLDO(zs=zs, h=h)
+    
+    if target_z > zs[FLDO+1]
+        sum_b += bs[FLDO] * ( (-h) - target_z)
+        return sum_b
+    end
+    
+    sum_b += bs[FLDO] * ( (-h) - zs[FLOD+1]) 
 
     # Rest layers
-    # (currently using loop for readability)
     for i = FLDO+1 : length(bs)
-        sum_b += bs[i] * (zs[i+1] - zs[i])
+        if target_z < zs[i+1]
+            sum_b += bs[i] * (zs[i] - zs[i+1])
+        else
+            sum_b += bs[i] * (zs[i] - target_z)
+            return sum_b
+        end
     end
 
-    return sum_b
 end
 
 function getFLDO(;
@@ -184,9 +201,13 @@ function stepOceanColumn!(;
     # 3
 
     # ML
-    #      i: calc
+    #      i: Calculate integrated buoyancy that should
+    #         be conserved purely through entrainment
+    #     ii: Add to total buoyancy
+
+    
     dbdt = - 1.0 / oc.h * (B0 + J0 + we * Δb)
-    new_b += dbdt * Δt 
+    total_buoyancy_change = - (B0 + J0) * Δt
     
     # DO
     #      i: determine gradient of b flux
