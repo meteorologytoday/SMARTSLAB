@@ -1,8 +1,8 @@
 module MLMML
 using Printf
 
-α   = 1.0
-β   = 1.0
+α   = 3e-4     # K^-1    http://www.kayelaby.npl.co.uk/general_physics/2_7/2_7_9.html
+β   = 1e-3     # Simple estimation
 c_p = 3985.0   # J / kg / K
 ρ   = 1027.0   # kg / m^3
 
@@ -26,14 +26,18 @@ struct OceanColumn
     N      :: Integer           # Number of layers
     zs     :: Array{Float64, 1} # Position of (N+1) grid points
     bs     :: Array{Float64, 1} # Buoyancy of N layers
+    Ks     :: Array{Float64, 1} # Diffusion coes between layers
+    KML    :: Float64           # Diffusion coe of ML and FLDO
     h      :: Float64           # Mixed-layer depth
     FLDO   :: Float64           # First layer of deep ocean
 
     function OceanColumn(zs::Array{Float64, 1})
         N  = length(zs) - 1
         bs = zeros(Float64, N)
+        Ks = zeros(Float64, N-1)
+        KML = 0.0 
         h  = 0.0
-        return new(N, zs, bs, h)
+        return new(N, zs, bs, Ks, KML, h)
     end
 end
 
@@ -181,8 +185,6 @@ function stepOceanColumn!(;
     # p.s.: Need to examine carefully about the
     #       conservation of buoyancy in water column
 
-    # Find Δb
-    Δb = b[1] - b[oc.DO_beg]
     fric_u = √(getWindStress(u10=ua) / ρ)
     flag, val = calWeOrMLD(; h=oc.h, B=B0+J0, fric_u=fric_u, Δb=Δb) 
 
@@ -190,7 +192,7 @@ function stepOceanColumn!(;
     if flag == :MLD
         we = 0.0
         new_h  = val
-    else if flag == :we
+    elseif flag == :we
         we = val 
         new_h += Δt * we
     end
@@ -205,18 +207,38 @@ function stepOceanColumn!(;
     #         be conserved purely through entrainment
     #     ii: Add to total buoyancy
 
-    
-    dbdt = - 1.0 / oc.h * (B0 + J0 + we * Δb)
-    total_buoyancy_change = - (B0 + J0) * Δt
-    
-    # DO
-    #      i: determine gradient of b flux
-    #     ii: determine gradient of 
-    for i 
+    hb_new = getIntegratedBuoyancy(
+        zs = oc.zs,
+        bs = oc.bs,
+        h  = oc.h,
+        target_z = -new_h
+    )
+  
+    hb_chg_by_F = -(B0 + J0) * Δt
+    new_b = (hb_new + hb_chg_by_F) / new_h
+   
+    # Update profile
+    bs_new = copy(oc.bs)
+    bs_new[1:new_FLDO-1] .= new_b
+ 
+    # Diffusion of all layers
+    # b_flux[i] means the flux from layer i+1 to i (upward > 0)
+    MLD_b_flux = - KML * (bs_new[1] - bs_new[new_FLDO])
+    b_flux = zeros(Float64, length(bs)-1)
+    for i = new_FLDO:length(b_flux)
+       b_flux[i] = - oc.Ks[i] * (bs_new[i] - bs_new[i+1]) 
+    end
 
+    bs_new[1:new_FLDO-1] .= bs_new[1] + MLD_b_flux / new_h * Δt
+    bs_new[new_FLDO] += (-MLD_b_flux + b_flux[new_FLDO]) / ((-new_h) - zs[new_FLDO+1]) * Δt
 
-    # 4
+    for i = new_FLDO+1:length(bs_new)
+        bs_new[i] += (- b_flux[i-1] + b_flux[i]) / (zs[i] - zs[i+1]) * Δt
+    end
 
+    oc.bs[:] = bs_new
+    oc.h = new_h
+    oc.FLDO = new_FLDO  
 end
 
 end
