@@ -82,8 +82,9 @@ function calWeOrMLD(;
 
     println("Term1: ", Term1, "; Term2:", Term2)
 
-    if RHS > 0 && Δb != 0
-        we = RHS / (h * Δb)
+    if RHS > 0
+        k2 = getTKE(fric_u)
+        we = RHS / (h * Δb + k2)
         println(":we, h: ", h, "; Δb: ", Δb, "; B: ", B)
         return :we, we
     else
@@ -107,6 +108,20 @@ function boundMLD(h)
     return max(min(h, h_max), h_min)
 end
 
+
+"""
+    getTKE(fric_u)
+
+# Description
+This function returns the TKE (turbulent kinetic energy) `k = 0.5 * (v'^2)` of ML. This parameterization is given by Kim 1976: "A Generalized Bulk Model of the Oceanic Mixed Layer" in its equation (11)
+
+"""
+function getTKE(
+    fric_u :: Float64
+)
+    cm = max(3e-2, 3.0 * fric_u)
+    return 0.5 * cm^2.0
+end
 
 function getIntegratedBuoyancy(;
     zs       :: Array{Float64,1},
@@ -137,13 +152,17 @@ function getIntegratedBuoyancy(;
     sum_b += bs[FLDO] * ( (-h) - zs[FLDO+1]) 
 
     # Rest layers
-    for i = FLDO+1 : length(bs)
-        if target_z < zs[i+1]
-            sum_b += bs[i] * (zs[i] - zs[i+1])
-        else
-            sum_b += bs[i] * (zs[i] - target_z)
-            return sum_b
+    if FLDO < length(bs)
+        for i = FLDO+1 : length(bs)
+            if target_z < zs[i+1]
+                sum_b += bs[i] * (zs[i] - zs[i+1])
+            else
+                sum_b += bs[i] * (zs[i] - target_z)
+                return sum_b
+            end
         end
+    else
+        return sum_b
     end
 
 end
@@ -210,7 +229,7 @@ function stepOceanColumn!(;
     Δb = oc.b_ML - oc.bs[oc.FLDO]
     fric_u = √(getWindStress(u10=ua) / ρ)
     flag, val = calWeOrMLD(; h=oc.h, B=B0+J0, fric_u=fric_u, Δb=Δb) 
-    println("Before:" , oc.bs[10], "; oc.FLDO = ", oc.FLDO)
+    println("Before:" , oc.bs[10], "; oc.FLDO = ", oc.FLDO, "; Δb = ", Δb)
 
     # 1
     if flag == :MLD
@@ -241,6 +260,8 @@ function stepOceanColumn!(;
     )
   
     hb_chg_by_F = -(B0 + J0) * Δt
+
+    println(new_h, "; ", hb_new, ", ")
     new_b_ML = (hb_new + hb_chg_by_F) / new_h
 
    
@@ -255,8 +276,42 @@ function stepOceanColumn!(;
     end
  
     # Convective adjustment
-    
+    if_unstable = new_b_ML .< bs_new[new_FLDO]
+    if any(if_unstable)
+        conv_b_new = new_b_ML
+        # Determine the least layers to be mixed
+        bottom_layer_to_convect = 1
+        for i = length(if_unstable):-1:1
+            if if_unstable[i] == true
+                bottom_layer_to_convect = i
+                break
+            end
+        end
 
+        # Determine how many extra layers should be mixed
+        for i = bottom_layer_to_convect:length(bs_new) - 1
+            conv_b_new = getIntegratedBuoyancy(
+                zs       =  oc.zs,
+                bs       =  bs_new,
+                b_ML     =  new_b_ML,
+                h        =  new_h,
+                target_z =  oc.zs[i+1]
+            ) / (-oc.zs[i+1])
+           
+            if conv_b_new < bs_new[i+1]
+                bottom_layer_to_convect = i+1
+            else
+                break
+            end
+        end
+
+        println("Convective Adjustment! new_FLDO: ", new_FLDO, "; update b from ", new_b_ML, " to ", conv_b_new)
+
+        new_b_ML = conv_b_new
+        new_FLDO = bottom_layer_to_convect + 1
+        bs_new[1:new_FLDO-1] .= new_b_ML
+    end
+    
 
 
     #= 
@@ -280,9 +335,6 @@ function stepOceanColumn!(;
         bs_new[i] += (- b_flux[i-1] + b_flux[i]) / (oc.zs[i] - oc.zs[i+1]) * Δt
     end
     =#
-
-
-
 
 
     oc.bs[:] = bs_new
