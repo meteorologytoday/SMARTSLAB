@@ -84,6 +84,7 @@ function calWeOrMLD(;
 
     if RHS > 0 && Δb != 0
         we = RHS / (h * Δb)
+        println(":we, h: ", h, "; Δb: ", Δb, "; B: ", B)
         return :we, we
     else
         # h becomes diagnostic. Notice that we assume
@@ -120,7 +121,7 @@ function getIntegratedBuoyancy(;
     end
 
     if -target_z < h
-       return bs[1] * ( - target_z )
+        return b_ML * ( - target_z )
     end
 
     sum_b = 0.0
@@ -209,6 +210,7 @@ function stepOceanColumn!(;
     Δb = oc.b_ML - oc.bs[oc.FLDO]
     fric_u = √(getWindStress(u10=ua) / ρ)
     flag, val = calWeOrMLD(; h=oc.h, B=B0+J0, fric_u=fric_u, Δb=Δb) 
+    println("Before:" , oc.bs[10], "; oc.FLDO = ", oc.FLDO)
 
     # 1
     if flag == :MLD
@@ -245,9 +247,14 @@ function stepOceanColumn!(;
     println("new_h: ", new_h, "; new_b_ML: ", new_b_ML, "; hb_chg_by_F: ", hb_chg_by_F)
 
 
+
     # Update profile
     bs_new = copy(oc.bs)
+    if new_FLDO > 1
+        bs_new[1:new_FLDO-1] .= new_b_ML
+    end
  
+    #= 
     # Diffusion of all layers
     # b_flux[i] means the flux from layer i+1 to i (upward > 0)
     # the extra b_flux[end] is artificial for easier programming
@@ -267,12 +274,14 @@ function stepOceanColumn!(;
     for i = new_FLDO+1:length(bs_new)-1
         bs_new[i] += (- b_flux[i-1] + b_flux[i]) / (oc.zs[i] - oc.zs[i+1]) * Δt
     end
-
+    =#
     oc.bs[:] = bs_new
     oc.h = new_h
     oc.FLDO = new_FLDO 
     oc.b_ML = new_b_ML
-    println("oc.b_ML", oc.b_ML, "; oc.bs[1]: ", oc.bs[1]) 
+
+
+    println("After:" , oc.bs[10])
 end
 
 end

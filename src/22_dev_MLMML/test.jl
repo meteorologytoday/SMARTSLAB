@@ -44,3 +44,12 @@ end
 
 ax[:set_ylim]([-20, 1])
 plt[:show]()
+
+
+fig, ax = plt[:subplots](3, 1, figsize=(8,6), sharex=true)
+
+ax[1][:plot](t/86400.0, J)
+ax[2][:plot](t/86400.0, b_rec)
+ax[3][:plot](t/86400.0, h_rec)
+
+plt[:show]()
