@@ -244,7 +244,7 @@ function stepOceanColumn!(;
     new_b_ML = (hb_new + hb_chg_by_F) / new_h
 
    
-    println("new_h: ", new_h, "; new_b_ML: ", new_b_ML, "; hb_chg_by_F: ", hb_chg_by_F)
+    println("new_h: ", new_h, "; new_b_ML: ", new_b_ML, "; hb_chg_by_F: ", hb_chg_by_F, "; -(B0+J0): ", -B0-J0)
 
 
 
@@ -254,6 +254,11 @@ function stepOceanColumn!(;
         bs_new[1:new_FLDO-1] .= new_b_ML
     end
  
+    # Convective adjustment
+    
+
+
+
     #= 
     # Diffusion of all layers
     # b_flux[i] means the flux from layer i+1 to i (upward > 0)
@@ -275,11 +280,15 @@ function stepOceanColumn!(;
         bs_new[i] += (- b_flux[i-1] + b_flux[i]) / (oc.zs[i] - oc.zs[i+1]) * Δt
     end
     =#
+
+
+
+
+
     oc.bs[:] = bs_new
     oc.h = new_h
     oc.FLDO = new_FLDO 
     oc.b_ML = new_b_ML
-
 
     println("After:" , oc.bs[10])
 end
