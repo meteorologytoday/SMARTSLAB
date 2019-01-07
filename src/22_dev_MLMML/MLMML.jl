@@ -5,7 +5,9 @@ using Printf
 β   = 1e-3     # Simple estimation
 c_p = 3985.0   # J / kg / K
 ρ   = 1027.0   # kg / m^3
-
+g   = 9.8      # m / s^2
+h_min = 1.0
+h_max = 1000.0
 """
     printConstants()
 
@@ -22,22 +24,25 @@ end
 
 
 
-struct OceanColumn
+mutable struct OceanColumn
     N      :: Integer           # Number of layers
     zs     :: Array{Float64, 1} # Position of (N+1) grid points
     bs     :: Array{Float64, 1} # Buoyancy of N layers
     Ks     :: Array{Float64, 1} # Diffusion coes between layers
     KML    :: Float64           # Diffusion coe of ML and FLDO
+    b_ML   :: Float64
     h      :: Float64           # Mixed-layer depth
-    FLDO   :: Float64           # First layer of deep ocean
+    FLDO   :: Integer           # First layer of deep ocean
 
     function OceanColumn(zs::Array{Float64, 1})
         N  = length(zs) - 1
         bs = zeros(Float64, N)
         Ks = zeros(Float64, N-1)
         KML = 0.0 
-        h  = 0.0
-        return new(N, zs, bs, Ks, KML, h)
+        b_ML = 0.0
+        h  = h_min
+        FLDO = 1
+        return new(N, zs, bs, Ks, KML, b_ML, h, FLDO)
     end
 end
 
@@ -74,22 +79,38 @@ function calWeOrMLD(;
     Term1 = 2.0 * m * fric_u^3.0
     Term2 = 0.5 * (B * (1.0 + n) - abs(B) * (1.0 - n))
     RHS = Term1 + h * Term2
-    if RHS > 0
+
+    println("Term1: ", Term1, "; Term2:", Term2)
+
+    if RHS > 0 && Δb != 0
         we = RHS / (h * Δb)
         return :we, we
     else
         # h becomes diagnostic. Notice that we assume
         # here that all sunlight is absorbed at the
         # very surface
-        
-        h_diag = - Term1 / Term2
+       
+        if Term2 == 0
+            h_diag = h
+        else
+            h_diag = - Term1 / Term2
+        end
+
+        h_diag = h_diag
+
         return :MLD, h_diag
     end
 end
 
+function boundMLD(h)
+    return max(min(h, h_max), h_min)
+end
+
+
 function getIntegratedBuoyancy(;
     zs       :: Array{Float64,1},
     bs       :: Array{Float64,1},
+    b_ML     :: Float64,
     h        :: Float64,
     target_z :: Float64,
 )
@@ -103,7 +124,7 @@ function getIntegratedBuoyancy(;
     end
 
     sum_b = 0.0
-    sum_b += h * bs[1]
+    sum_b += h * b_ML
 
     FLDO = getFLDO(zs=zs, h=h)
     
@@ -112,7 +133,7 @@ function getIntegratedBuoyancy(;
         return sum_b
     end
     
-    sum_b += bs[FLDO] * ( (-h) - zs[FLOD+1]) 
+    sum_b += bs[FLDO] * ( (-h) - zs[FLDO+1]) 
 
     # Rest layers
     for i = FLDO+1 : length(bs)
@@ -131,7 +152,7 @@ function getFLDO(;
     h  :: Float64
 )
     for i = 1:length(zs)-1
-        if h < (zs[i+1] - zs[1])
+        if h <= (zs[1] - zs[i+1])
             return i
         end
     end
@@ -185,6 +206,7 @@ function stepOceanColumn!(;
     # p.s.: Need to examine carefully about the
     #       conservation of buoyancy in water column
 
+    Δb = oc.b_ML - oc.bs[oc.FLDO]
     fric_u = √(getWindStress(u10=ua) / ρ)
     flag, val = calWeOrMLD(; h=oc.h, B=B0+J0, fric_u=fric_u, Δb=Δb) 
 
@@ -194,12 +216,13 @@ function stepOceanColumn!(;
         new_h  = val
     elseif flag == :we
         we = val 
-        new_h += Δt * we
+        new_h = oc.h + Δt * we
     end
-    
+    new_h = boundMLD(new_h)
+    println("flag: ", flag, "; val:", val)    
     # 2
     new_FLDO = getFLDO(zs=oc.zs, h=new_h)
-
+    #println("new_FLDO: ", new_FLDO)
     # 3
 
     # ML
@@ -210,35 +233,46 @@ function stepOceanColumn!(;
     hb_new = getIntegratedBuoyancy(
         zs = oc.zs,
         bs = oc.bs,
+        b_ML = oc.b_ML,
         h  = oc.h,
         target_z = -new_h
     )
   
     hb_chg_by_F = -(B0 + J0) * Δt
-    new_b = (hb_new + hb_chg_by_F) / new_h
+    new_b_ML = (hb_new + hb_chg_by_F) / new_h
+
    
+    println("new_h: ", new_h, "; new_b_ML: ", new_b_ML, "; hb_chg_by_F: ", hb_chg_by_F)
+
+
     # Update profile
     bs_new = copy(oc.bs)
-    bs_new[1:new_FLDO-1] .= new_b
  
     # Diffusion of all layers
     # b_flux[i] means the flux from layer i+1 to i (upward > 0)
-    MLD_b_flux = - KML * (bs_new[1] - bs_new[new_FLDO])
-    b_flux = zeros(Float64, length(bs)-1)
-    for i = new_FLDO:length(b_flux)
+    # the extra b_flux[end] is artificial for easier programming
+    MLD_b_flux = - oc.KML * (new_b_ML - bs_new[new_FLDO])
+    b_flux = zeros(Float64, length(oc.bs))
+    for i = new_FLDO:length(b_flux)-1
        b_flux[i] = - oc.Ks[i] * (bs_new[i] - bs_new[i+1]) 
     end
 
-    bs_new[1:new_FLDO-1] .= bs_new[1] + MLD_b_flux / new_h * Δt
-    bs_new[new_FLDO] += (-MLD_b_flux + b_flux[new_FLDO]) / ((-new_h) - zs[new_FLDO+1]) * Δt
+    new_b_ML += MLD_b_flux / new_h * Δt
+    if new_FLDO > 1
+        bs_new[1:new_FLDO-1] .= new_b_ML
+    end
+      
+    bs_new[new_FLDO] += (-MLD_b_flux + b_flux[new_FLDO]) / ((-new_h) - oc.zs[new_FLDO+1]) * Δt
 
-    for i = new_FLDO+1:length(bs_new)
-        bs_new[i] += (- b_flux[i-1] + b_flux[i]) / (zs[i] - zs[i+1]) * Δt
+    for i = new_FLDO+1:length(bs_new)-1
+        bs_new[i] += (- b_flux[i-1] + b_flux[i]) / (oc.zs[i] - oc.zs[i+1]) * Δt
     end
 
     oc.bs[:] = bs_new
     oc.h = new_h
-    oc.FLDO = new_FLDO  
+    oc.FLDO = new_FLDO 
+    oc.b_ML = new_b_ML
+    println("oc.b_ML", oc.b_ML, "; oc.bs[1]: ", oc.bs[1]) 
 end
 
 end
