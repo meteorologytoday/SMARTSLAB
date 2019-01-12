@@ -7,17 +7,19 @@ mutable struct OceanColumn
     b_ML   :: Float64
     h      :: Float64           # Mixed-layer depth
     FLDO   :: Integer           # First layer of deep ocean
+end
 
-    function OceanColumn(zs::Array{Float64, 1})
-        N  = length(zs) - 1
-        bs = zeros(Float64, N)
-        Ks = zeros(Float64, N-1)
-        KML = 0.0 
-        b_ML = 0.0
-        h  = h_min
-        FLDO = 1
-        return new(N, zs, bs, Ks, KML, b_ML, h, FLDO)
-    end
+function copy(oc::OceanColumn)
+    return OceanColumn(
+        oc.N,
+        Base.copy(oc.zs),
+        Base.copy(oc.bs),
+        Base.copy(oc.Ks),
+        oc.KML,
+        oc.b_ML,
+        oc.h,
+        oc.FLDO
+    )
 end
 
 
@@ -33,6 +35,7 @@ function setBuoyancy!(
         throw(ErrorException(Formatting("h cannot be less than h_min: {:.2f}", h_min)))
     end
 
+    oc.h = h
     oc.bs[:] = bs
     oc.FLDO  = getFLDO(zs=oc.zs, h=h)
     oc.b_ML  = b_ML
@@ -43,4 +46,45 @@ function setBuoyancy!(
     if convective_adjustment
         doConvectiveAdjustment!(oc)
     end
+end
+
+function makeBlankOceanColumn(zs::Array{Float64, 1})
+    N  = length(zs) - 1
+    bs = zeros(Float64, N)
+    Ks = zeros(Float64, N-1)
+    KML = 0.0 
+    b_ML = 0.0
+    h  = h_min
+    FLDO = 1
+
+    oc = OceanColumn(N, zs, bs, Ks, KML, b_ML, h, FLDO)
+    updateFLDO!(oc)
+
+    return oc
+end
+
+function makeSimpleOceanColumn(;
+    zs      :: Array{Float64, 1},
+    b_slope :: Float64 = 30.0 / 5000.0 * g * α,
+    b_ML    :: Float64 = 1.0,
+    h       :: Float64 = h_min,
+    Δb      :: Float64 = 0.0
+)
+
+oc = makeBlankOceanColumn(zs)
+
+bs = zeros(Float64, length(zs)-1)
+for i = 1:length(bs)
+    z = (zs[i] + zs[i+1]) / 2.0
+    if z > -h
+        bs[i] = b_ML
+    else
+        bs[i] = b_ML - Δb - b_slope * (-z - h)
+    end
+end
+
+setBuoyancy!(oc, bs=bs, b_ML=b_ML, h=h)
+updateFLDO!(oc)
+
+return oc
 end

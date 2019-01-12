@@ -32,6 +32,7 @@ function stepOceanColumn!(;
     # p.s.: Need to examine carefully about the
     #       conservation of buoyancy in water column
 
+    println("### h: ", oc.h)
     Δb = oc.b_ML - oc.bs[oc.FLDO]
     fric_u = getFricU(ua=ua)
     flag, val = calWeOrMLD(; h=oc.h, B=B0+J0, fric_u=fric_u, Δb=Δb) 
@@ -74,7 +75,7 @@ function stepOceanColumn!(;
     #println("new_h: ", new_h, "; new_b_ML: ", new_b_ML, "; hb_chg_by_F: ", hb_chg_by_F, "; -(B0+J0): ", -B0-J0)
 
     # Update profile
-    bs_new = copy(oc.bs)
+    bs_new = Base.copy(oc.bs)
     if new_FLDO > 1
         bs_new[1:new_FLDO-1] .= new_b_ML
     end
@@ -117,7 +118,11 @@ function stepOceanColumn!(;
     oc.FLDO = new_FLDO 
     oc.b_ML = new_b_ML
 
-    println("After:" , oc.bs[10])
+    return Dict(
+        :flag => flag,
+        :val  => val,
+        :Δb   => Δb,
+    )
 end
 
 

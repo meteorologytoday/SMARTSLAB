@@ -1,3 +1,19 @@
+function getIntegratedBuoyancy(oc::OceanColumn; target_z::Float64 = NaN)
+
+    if isnan(target_z)
+        target_z = oc.zs[end]
+    end
+
+    return getIntegratedBuoyancy(
+        zs = oc.zs,
+        bs = oc.bs,
+        b_ML = oc.b_ML,
+        h = oc.h,
+        target_z = target_z
+    )
+end
+
+
 function getIntegratedBuoyancy(;
     zs       :: Array{Float64,1},
     bs       :: Array{Float64,1},
