@@ -90,14 +90,14 @@ function stepOceanColumn!(;
         FLDO = new_FLDO,
     ) 
  
-    #= 
+     
     # Diffusion of all layers
     # b_flux[i] means the flux from layer i+1 to i (upward > 0)
     # the extra b_flux[end] is artificial for easier programming
-    MLD_b_flux = - oc.KML * (new_b_ML - bs_new[new_FLDO])
+    MLD_b_flux = - oc.K_ML * (new_b_ML - bs_new[new_FLDO])
     b_flux = zeros(Float64, length(oc.bs))
     for i = new_FLDO:length(b_flux)-1
-       b_flux[i] = - oc.Ks[i] * (bs_new[i] - bs_new[i+1]) 
+       b_flux[i] = - oc.K_DO * (bs_new[i] - bs_new[i+1]) 
     end
 
     new_b_ML += MLD_b_flux / new_h * Δt
@@ -110,7 +110,7 @@ function stepOceanColumn!(;
     for i = new_FLDO+1:length(bs_new)-1
         bs_new[i] += (- b_flux[i-1] + b_flux[i]) / (oc.zs[i] - oc.zs[i+1]) * Δt
     end
-    =#
+    
 
 
     oc.bs[:] = bs_new
