@@ -10,11 +10,11 @@ using PyPlot
 @pyimport matplotlib.gridspec as GS
 @printf("done.\n")
 
-D  = 5000.0
+D  = 70.0
 N  = 1001
 zs = collect(Float64, range(0.0, stop=-D, length=N))
 
-Δb_init = 10.0 * MLMML.α * MLMML.g  
+Δb_init = 0.5 * 10.0 * MLMML.α * MLMML.g  
 b_ML_init = 1.0
 h_init = 50.0
 
@@ -36,8 +36,8 @@ E = - J0 * t
 J = J0 / 90.0 / 86400.0 * t
 E = - J .* t / 2
 
-J = J0 * sin.(ω*t)
-E = J0/ω * (cos.(ω*t) .- 1.0)
+#J = J0 * sin.(ω*t)
+#E = J0/ω * (cos.(ω*t) .- 1.0)
 
 U10 = zeros(Float64, length(t))
 U10 .= 0.0 #.+ 2.0 * rand(length(U10)) 
@@ -76,6 +76,10 @@ for k = 1:length(t)-1
     push!(hb_rec, MLMML.getIntegratedBuoyancy(oc, target_z=-oc.h))
     push!(we_rec, ( info[:flag] == :we ) ? info[:val] : NaN)
     bs_rec[:, k+1] = oc.bs
+
+    if k == 5
+#        break
+    end
 end
 
 

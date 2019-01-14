@@ -35,8 +35,9 @@ function calWeOrMLD(;
     println("Term1: ", Term1, "; Term2:", Term2)
 
     if RHS > 0
-        we = RHS / (h * Δb + getTKE(fric_u=fric_u))
-        println(":we, h: ", h, "; Δb: ", Δb, "; B: ", B)
+        k = getTKE(fric_u=fric_u)
+        we = RHS / (h * Δb + k)
+        println(":we, h: ", h, "; Δb: ", Δb, "; B: ", B, "; k:", k)
         return :we, we
     else
         # h becomes diagnostic. Notice that we assume

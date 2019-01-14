@@ -16,7 +16,7 @@ E_func(t) = - J_func(t) * t/2.0
 ω  = 2π / PERIOD
 h0 = 50.0
 s  = 30.0 / 5000.0 * MLMML.α * MLMML.g
-k  = MLMML.getTKE(fric_u=MLMML.getFricU(ua=0.0)) * 10
+k  = MLMML.getTKE(fric_u=MLMML.getFricU(ua=0.0))
 n  = 0.2 
 Δb0 = 10.0 * MLMML.α * MLMML.g *0
 #sol = t -> (m * h0)^(-1.0) * (√(k^2.0 + (2.0*m*h0^2.0*(-J0)*n)/ω * (1.0 - cos(ω*t))) - k)

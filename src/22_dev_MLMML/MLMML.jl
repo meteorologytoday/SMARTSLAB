@@ -1,6 +1,7 @@
 module MLMML
 using Printf
 using Formatting
+using SparseArrays
 
 include("constants.jl")
 include("OceanColumn.jl")
@@ -8,6 +9,33 @@ include("calWeOrMLD.jl")
 include("doConvectiveAdjustment.jl")
 include("getIntegratedBuoyancy.jl")
 include("stepOceanColumn.jl")
+
+
+"""
+This function checks if CFL criteria is satisfied which is required by Euler Forward Scheme. Explicitly,
+
+ K Δt       1
+------  <= ---
+(Δz)^2      2
+
+for every layer. This function returns true every layer is satisfied, returns false if any of the layers is not.
+
+"""
+function checkDiffusionStability(;
+    Δz :: Array{Float64, 1},
+    K  :: Float64,
+    Δt :: Float64,
+)
+
+    return all( Δz .>= √(2.0 * K * Δt) )
+end
+
+function minΔz(;
+    K :: Float64,
+    Δt:: Float64,
+)
+    return √(2.0 * K * Δt)
+end
 
 
 

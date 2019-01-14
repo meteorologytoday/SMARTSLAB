@@ -2,23 +2,42 @@ mutable struct OceanColumn
     N      :: Integer           # Number of layers
     zs     :: Array{Float64, 1} # Position of (N+1) grid points
     bs     :: Array{Float64, 1} # Buoyancy of N layers
-    K_DO    :: Float64           # Diffusion coes between layers
+    K_DO   :: Float64           # Diffusion coes between layers
     K_ML   :: Float64           # Diffusion coe of ML and FLDO
     b_ML   :: Float64
     h      :: Float64           # Mixed-layer depth
     FLDO   :: Integer           # First layer of deep ocean
+
+    # Derived quantities
+    hs     :: Array{Float64, 1} # Thickness of layers
+    Δzs    :: Array{Float64, 1} # Δz between layers
+
+    function OceanColumn(;
+        N      :: Integer,
+        zs     :: Array{Float64, 1},
+        bs     :: Array{Float64, 1} ,
+        K_DO   :: Float64,
+        K_ML   :: Float64,
+        b_ML   :: Float64,
+        h      :: Float64,
+        FLDO   :: Integer
+    )
+        hs  = zs[1:end-1] - zs[2:end]
+        Δzs = (hs[1:end-1] + hs[2:end]) / 2.0
+        return new(N, zs, bs, K_DO, K_ML, b_ML, h, FLDO, hs, Δzs)
+    end
 end
 
 function copy(oc::OceanColumn)
     return OceanColumn(
-        oc.N,
-        Base.copy(oc.zs),
-        Base.copy(oc.bs),
-        Base.copy(oc.Ks),
-        oc.KML,
-        oc.b_ML,
-        oc.h,
-        oc.FLDO
+        N=oc.N,
+        zs=Base.copy(oc.zs),
+        bs=Base.copy(oc.bs),
+        K_DO=oc.K_DO,
+        K_ML=oc.K_ML,
+        b_ML=oc.b_ML,
+        h=oc.h,
+        FLDO=oc.FLDO
     )
 end
 
@@ -57,7 +76,7 @@ function makeBlankOceanColumn(zs::Array{Float64, 1})
     h     = h_min
     FLDO  = 1
 
-    oc = OceanColumn(N, zs, bs, K_DO, K_ML, b_ML, h, FLDO)
+    oc = OceanColumn(N=N, zs=zs, bs=bs, K_DO=K_DO, K_ML=K_ML, b_ML=b_ML, h=h, FLDO=FLDO)
     updateFLDO!(oc)
 
     return oc
