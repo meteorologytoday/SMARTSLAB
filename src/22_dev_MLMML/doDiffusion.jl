@@ -93,7 +93,7 @@ end
 
 
 
-function doDiffusion_BackwardEuler!(oc::OceanColumn; Δt::Float64)
+function doDiffusion_EulerBackward!(oc::OceanColumn; Δt::Float64)
     
     new_b_ML = doDiffusion_BackwardEuler!(
         zs=oc.zs,
@@ -123,7 +123,6 @@ function doDiffusion_BackwardEuler!(;
     # b_flux[i] means the flux from layer i+1 to i (upward > 0)
     # the extra b_flux[end] is artificial for easier programming
     n   = length(bs) - (FLDO - 1) + 1
-    αs  = zeros(Float64, n)
     Δzs = zeros(Float64, n-1)
     hs  = zeros(Float64, n)
     bs_RHS = zeros(Float64, n)
@@ -131,7 +130,7 @@ function doDiffusion_BackwardEuler!(;
     bs_RHS[1] = b_ML
     bs_RHS[2:end] = bs[FLDO:end]
 
-    println("bs[end]", bs[end])
+    #println("bs[end]", bs[end])
 
     #println("length(hs) = ", length(hs))
     #println("length(zs) = ", length(zs))
@@ -141,37 +140,34 @@ function doDiffusion_BackwardEuler!(;
     hs[2] = -zs[FLDO+1] - h
     hs[3:end] = zs[FLDO+1:end-1] - zs[FLDO+2:end]
 
+    #println(hs)
+
     Δzs[1] = max(min((hs[1] + hs[2]) / 2.0, hs[2]), Δt * K / h_min)
     Δzs[2:end] = (hs[2:end-1] + hs[3:end]) / 2.0
 
-    # Notice that α[1] and α[N] have units different from others
-    αs[1] = Δt * K / hs[1] / Δzs[1]
-    αs[2:n-1] = Δt * K ./ (hs[2:n-1] .* Δzs[2:n-1] .* Δzs[1:n-2])
-    αs[n] = Δt * K / hs[n] / Δzs[n-1]
+    αs = Δt * K ./ hs
 
     A = spzeros(Float64, n, n)
 
-    A[1, 1] = 1.0 + αs[1]
-    A[1, 2] = - αs[1]
+    A[1, 1] = 1.0 + αs[1] / Δzs[1]
+    A[1, 2] = - αs[1] / Δzs[1]
 
     for i=2:n-1
-        A[i, i-1] = - αs[i] * Δzs[i]
-        A[i, i  ] = 1.0 + αs[i] * (Δzs[i] + Δzs[i-1])
-        A[i, i+1] = - αs[i] * Δzs[i-1]
+        A[i, i-1] = - αs[i] / Δzs[i-1]
+        A[i, i  ] = 1.0 + αs[i] * (Δzs[i] + Δzs[i-1]) / (Δzs[i] * Δzs[i-1])
+        A[i, i+1] = - αs[i] / Δzs[i]
     end
 
-    A[n, n  ] = 1.0 + αs[1]
-    A[n, n-1] = αs[n]
+    A[n, n  ] = 1.0 + αs[n] / Δzs[n-1]
+    A[n, n-1] = - αs[n] / Δzs[n-1]
 
 
     bs_new = A \ bs_RHS
-
     new_b_ML = bs_new[1]
     if FLDO > 1
         bs[1:FLDO-1] .= new_b_ML
     end
     bs[FLDO:end] = bs_new[2:end]
-    println(bs[end])
-    bs[end] = 0.95002
+
     return new_b_ML
 end

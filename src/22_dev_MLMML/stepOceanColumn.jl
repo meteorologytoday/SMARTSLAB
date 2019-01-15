@@ -32,9 +32,9 @@ function stepOceanColumn!(;
     # p.s.: Need to examine carefully about the
     #       conservation of buoyancy in water column
 
-    #=
-    println("### h: ", oc.h)
+    #println("### h: ", oc.h)
 
+    println("FLDO:", oc.FLDO)
     Δb = oc.b_ML - oc.bs[oc.FLDO]
     fric_u = getFricU(ua=ua)
     flag, val = calWeOrMLD(; h=oc.h, B=B0+J0, fric_u=fric_u, Δb=Δb) 
@@ -55,6 +55,7 @@ function stepOceanColumn!(;
     #println("new_FLDO: ", new_FLDO)
     # 3
 
+    #=
     # ML
     #      i: Calculate integrated buoyancy that should
     #         be conserved purely through entrainment
@@ -72,38 +73,20 @@ function stepOceanColumn!(;
 
     #println(new_h, "; ", hb_new, ", ")
     new_b_ML = (hb_new + hb_chg_by_F) / new_h
-
-   
-    #println("new_h: ", new_h, "; new_b_ML: ", new_b_ML, "; hb_chg_by_F: ", hb_chg_by_F, "; -(B0+J0): ", -B0-J0)
-
-    # Update profile
-    bs_new = Base.copy(oc.bs)
-    if new_FLDO > 1
-        bs_new[1:new_FLDO-1] .= new_b_ML
-    end
-
     
-
-    new_h, new_b_ML, new_FLDO = doConvectiveAdjustment!(
-        zs   = oc.zs,
-        bs   = bs_new,
-        h    = new_h,
-        b_ML = new_b_ML,
-        FLDO = new_FLDO,
-    ) 
- 
-    oc.bs[:] = bs_new
-    oc.h = new_h
-    oc.FLDO = new_FLDO 
-    oc.b_ML = new_b_ML
+    setMixedLayer!(
+        oc,
+        b_ML=new_b_ML,
+        h=new_h,
+        convective_adjustment=false
+    )
     =#
-    doDiffusion_BackwardEuler!(oc, Δt=Δt)
-
-
+    doDiffusion_EulerBackward!(oc, Δt=Δt)
+    #doConvectiveAdjustment!(oc)
     return Dict(
-        :flag => :ee,
-        :val  => 0,
-        :Δb   => 0,
+        :flag => flag,
+        :val  => val,
+        :Δb   => Δb,
     )
 end
 

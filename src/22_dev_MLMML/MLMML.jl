@@ -83,6 +83,7 @@ function getFLDO(;
     h  :: Float64
 )
     for i = 1:length(zs)-1
+        #println("h:", h, "; Δzs= ", zs[1] - zs[i+1])
         if h < (zs[1] - zs[i+1])  # I don't use equality in order to avoid Δb = 0 during some initialization
             return i
         end

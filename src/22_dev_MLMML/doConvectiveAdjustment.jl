@@ -25,7 +25,7 @@ function doConvectiveAdjustment!(;
     # Convective adjustment
     if_unstable = bs .> b_ML
     if any(if_unstable)
-        #println("UNSTABLE!!!!!!!!!!!!!!!!!!!!")
+        println("UNSTABLE!!!!!!!!!!!!!!!!!!!!")
         #println(length(if_unstable))
         conv_b_new = b_ML
         # Determine the least layers to be mixed

@@ -50,9 +50,27 @@ function setBuoyancy!(
     if h < h_min
         throw(ErrorException(Formatting("h cannot be less than h_min: {:.2f}", h_min)))
     end
+    
+    oc.bs[:] = bs
+    setMixedLayer!(oc; b_ML=b_ML, h=h, convective_adjustment=false)
+
+    if convective_adjustment
+        doConvectiveAdjustment!(oc)
+    end
+end
+
+function setMixedLayer!(
+    oc  ::OceanColumn;
+    b_ML::Float64,
+    h   ::Float64,
+    convective_adjustment::Bool=true
+)
+
+    if h < h_min
+        throw(ErrorException(Formatting("h cannot be less than h_min: {:.2f}", h_min)))
+    end
 
     oc.h = h
-    oc.bs[:] = bs
     oc.FLDO  = getFLDO(zs=oc.zs, h=h)
     oc.b_ML  = b_ML
     if oc.FLDO > 1
@@ -64,7 +82,8 @@ function setBuoyancy!(
     end
 end
 
-function makeBlankOceanColumn(zs::Array{Float64, 1})
+
+function makeBlankOceanColumn(;zs::Array{Float64, 1})
     N     = length(zs) - 1
     bs    = zeros(Float64, N)
     K     = 0.0
@@ -87,7 +106,7 @@ function makeSimpleOceanColumn(;
     K       :: Float64 = 1e-5,
 )
 
-oc = makeBlankOceanColumn(zs)
+oc = makeBlankOceanColumn(zs=zs)
 
 bs = zeros(Float64, length(zs)-1)
 for i = 1:length(bs)

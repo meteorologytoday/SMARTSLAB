@@ -10,21 +10,21 @@ using PyPlot
 @pyimport matplotlib.gridspec as GS
 @printf("done.\n")
 
-D  = 100.0
-N  = 6
+D  = 500.0
+N  = 101
 zs = collect(Float64, range(0.0, stop=-D, length=N))
 
 Δb_init = 0.5 * 10.0 * MLMML.α * MLMML.g  
 b_ML_init = 1.0
 h_init = 50.0
 
-b_slope = 30.0 / D * MLMML.g * MLMML.α
+b_slope = 10.0 / D * MLMML.g * MLMML.α
 
 PERIOD = 360.0 * 86400.0
 TOTAL_TIME = .25 * PERIOD
 
 ω = 2π/360.0/86400.0
-t = collect(Float64, range(0.0, step=1 * 86400.0, stop=TOTAL_TIME))
+t = collect(Float64, range(0.0, step=1, stop=5)) * 86400.0
 Δt = t[2] - t[1]
 t_day = t / 86400.0
 
@@ -47,7 +47,8 @@ oc = MLMML.makeSimpleOceanColumn(
     b_slope = b_slope,
     b_ML    = b_ML_init,
     h       = h_init,
-    Δb      = Δb_init
+    Δb      = Δb_init,
+    K       = 1e-5
 )
 
 #if ! MLMML.checkDiffusionStability(oc, Δt=Δt)
@@ -81,10 +82,6 @@ for k = 1:length(t)-1
     push!(hb_rec, MLMML.getIntegratedBuoyancy(oc, target_z=-oc.h))
     push!(we_rec, ( info[:flag] == :we ) ? info[:val] : NaN)
     bs_rec[:, k+1] = oc.bs
-
-    if k == 5
-#        break
-    end
 end
 
 
