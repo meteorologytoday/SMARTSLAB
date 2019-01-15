@@ -34,7 +34,7 @@ function stepOceanColumn!(;
 
     #println("### h: ", oc.h)
 
-    println("FLDO:", oc.FLDO)
+    #println("FLDO:", oc.FLDO)
     Δb = oc.b_ML - oc.bs[oc.FLDO]
     fric_u = getFricU(ua=ua)
     flag, val = calWeOrMLD(; h=oc.h, B=B0+J0, fric_u=fric_u, Δb=Δb) 
@@ -49,13 +49,12 @@ function stepOceanColumn!(;
         new_h = oc.h + Δt * we
     end
     new_h = boundMLD(new_h)
-    println("flag: ", flag, "; val:", val)    
+    #println("flag: ", flag, "; val:", val)    
     # 2
     new_FLDO = getFLDO(zs=oc.zs, h=new_h)
     #println("new_FLDO: ", new_FLDO)
     # 3
 
-    #=
     # ML
     #      i: Calculate integrated buoyancy that should
     #         be conserved purely through entrainment
@@ -80,9 +79,9 @@ function stepOceanColumn!(;
         h=new_h,
         convective_adjustment=false
     )
-    =#
+    
     doDiffusion_EulerBackward!(oc, Δt=Δt)
-    #doConvectiveAdjustment!(oc)
+    doConvectiveAdjustment!(oc)
     return Dict(
         :flag => flag,
         :val  => val,

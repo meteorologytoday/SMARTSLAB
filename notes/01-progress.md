@@ -5,12 +5,14 @@
 - Use Kraus-Turner parameterization to see the result
 
 
-- I said total_downward_heat_flux is not the same as i thought, prove it.
-- Francois: What is the difference between T_{i+1} - T_{i-1} vs T_{i+1} - T_{i}
-
 - Understand what processes are actually involved in GFDL ESM2M model
 - NCAR-CESM [Download Link](https://www.earthsystemgrid.org/search.html?Project=CMIP5&Experiment=piControl&Ensemble=r1i1p1&Model=CESM1-WACCM&Frequency=Monthly&Product=output1)
 
+
+# 2019-01-14
+- Complete a crude mixed layer model MLMML (Mixed-layer Model - Multiple Layers).
+  Convective adjustment is currently only apply on mixed layer. Need to think on applying that to deep ocean.
+- For now I do not think it is important to make ocean semi-transparent.
 
 # 2018-11-08
 - STAN program applied. Get pretty interesting result. Uncertainty of Q and h are trade-off. Meaning solid physical processes are missing
