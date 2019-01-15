@@ -3,8 +3,6 @@
 *.swo
 *.nc
 img/
-*.png
-*.eps
 *.gz
 *.csv
 tmp

@@ -14,4 +14,14 @@ The current coupled model that I am using is [GFDL ESM2G](https://www.gfdl.noaa.
 - [EC-Earth](http://www.ec-earth.org/)
 - [NCAR CESM](http://www.cesm.ucar.edu/experiments/cesm1.0/)
 
+## Latest work (partial text of [progress](./notes/01-progress.md) 
+
+
+# 2019-01-14
+- Complete a crude mixed layer model MLMML (Mixed-layer Model - Multiple Layers).
+  Convective adjustment is currently only apply on mixed layer. Need to think on applying that to deep ocean.
+- For now I do not think it is important to make ocean semi-transparent.
+
+A 20 years test run with no wind:
+![](./saved_img/MLMML_test.png)
 
