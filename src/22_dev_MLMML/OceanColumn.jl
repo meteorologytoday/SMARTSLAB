@@ -2,8 +2,7 @@ mutable struct OceanColumn
     N      :: Integer           # Number of layers
     zs     :: Array{Float64, 1} # Position of (N+1) grid points
     bs     :: Array{Float64, 1} # Buoyancy of N layers
-    K_DO   :: Float64           # Diffusion coes between layers
-    K_ML   :: Float64           # Diffusion coe of ML and FLDO
+    K      :: Float64           # Diffusion coes
     b_ML   :: Float64
     h      :: Float64           # Mixed-layer depth
     FLDO   :: Integer           # First layer of deep ocean
@@ -16,15 +15,14 @@ mutable struct OceanColumn
         N      :: Integer,
         zs     :: Array{Float64, 1},
         bs     :: Array{Float64, 1} ,
-        K_DO   :: Float64,
-        K_ML   :: Float64,
+        K      :: Float64,
         b_ML   :: Float64,
         h      :: Float64,
         FLDO   :: Integer
     )
         hs  = zs[1:end-1] - zs[2:end]
         Δzs = (hs[1:end-1] + hs[2:end]) / 2.0
-        return new(N, zs, bs, K_DO, K_ML, b_ML, h, FLDO, hs, Δzs)
+        return new(N, zs, bs, K, b_ML, h, FLDO, hs, Δzs)
     end
 end
 
@@ -33,8 +31,7 @@ function copy(oc::OceanColumn)
         N=oc.N,
         zs=Base.copy(oc.zs),
         bs=Base.copy(oc.bs),
-        K_DO=oc.K_DO,
-        K_ML=oc.K_ML,
+        K=oc.K,
         b_ML=oc.b_ML,
         h=oc.h,
         FLDO=oc.FLDO
@@ -70,13 +67,12 @@ end
 function makeBlankOceanColumn(zs::Array{Float64, 1})
     N     = length(zs) - 1
     bs    = zeros(Float64, N)
-    K_DO  = 0.0
-    K_ML  = 0.0 
+    K     = 0.0
     b_ML  = 0.0
     h     = h_min
     FLDO  = 1
 
-    oc = OceanColumn(N=N, zs=zs, bs=bs, K_DO=K_DO, K_ML=K_ML, b_ML=b_ML, h=h, FLDO=FLDO)
+    oc = OceanColumn(N=N, zs=zs, bs=bs, K=K, b_ML=b_ML, h=h, FLDO=FLDO)
     updateFLDO!(oc)
 
     return oc
@@ -88,8 +84,7 @@ function makeSimpleOceanColumn(;
     b_ML    :: Float64 = 1.0,
     h       :: Float64 = h_min,
     Δb      :: Float64 = 0.0,
-    K_DO    :: Float64 = 1e-5,
-    K_ML    :: Float64 = 1e-5,
+    K       :: Float64 = 1e-5,
 )
 
 oc = makeBlankOceanColumn(zs)
@@ -105,8 +100,7 @@ for i = 1:length(bs)
 end
 
 setBuoyancy!(oc, bs=bs, b_ML=b_ML, h=h)
-oc.K_DO = K_DO
-oc.K_ML = K_ML
+oc.K = K
 updateFLDO!(oc)
 
 return oc

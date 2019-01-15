@@ -10,8 +10,8 @@ using PyPlot
 @pyimport matplotlib.gridspec as GS
 @printf("done.\n")
 
-D  = 70.0
-N  = 1001
+D  = 100.0
+N  = 6
 zs = collect(Float64, range(0.0, stop=-D, length=N))
 
 Δb_init = 0.5 * 10.0 * MLMML.α * MLMML.g  
@@ -24,7 +24,7 @@ PERIOD = 360.0 * 86400.0
 TOTAL_TIME = .25 * PERIOD
 
 ω = 2π/360.0/86400.0
-t = collect(Float64, range(0.0, step=.1 * 86400.0, stop=TOTAL_TIME))
+t = collect(Float64, range(0.0, step=1 * 86400.0, stop=TOTAL_TIME))
 Δt = t[2] - t[1]
 t_day = t / 86400.0
 
@@ -49,6 +49,11 @@ oc = MLMML.makeSimpleOceanColumn(
     h       = h_init,
     Δb      = Δb_init
 )
+
+#if ! MLMML.checkDiffusionStability(oc, Δt=Δt)
+#    throw(ErrorException("Stability criteria does not fulfill."))
+#end
+
 
 
 h_rec = [h_init]

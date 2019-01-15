@@ -7,6 +7,7 @@ include("constants.jl")
 include("OceanColumn.jl")
 include("calWeOrMLD.jl")
 include("doConvectiveAdjustment.jl")
+include("doDiffusion.jl")
 include("getIntegratedBuoyancy.jl")
 include("stepOceanColumn.jl")
 
@@ -21,14 +22,28 @@ This function checks if CFL criteria is satisfied which is required by Euler For
 for every layer. This function returns true every layer is satisfied, returns false if any of the layers is not.
 
 """
-function checkDiffusionStability(;
-    Δz :: Array{Float64, 1},
+function checkAllDiffusionStability(;
+    Δzs:: Array{Float64, 1},
     K  :: Float64,
     Δt :: Float64,
 )
 
-    return all( Δz .>= √(2.0 * K * Δt) )
+    return all( Δzs .>= √(2.0 * K * Δt) )
 end
+
+function checkDiffusionStability(;
+    Δz :: Float64,
+    K  :: Float64,
+    Δt :: Float64,
+)
+
+    return Δz >= √(2.0 * K * Δt)
+end
+
+function checkDiffusionStability(oc::OceanColumn; Δt)
+    return checkAllDiffusionStability(Δzs=oc.Δzs, K=oc.K, Δt=Δt)
+end
+
 
 function minΔz(;
     K :: Float64,
