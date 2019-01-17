@@ -37,7 +37,7 @@ function getIntegratedBuoyancy(;
 
 
     # Test if entire ocean column is mixed layer
-    FLDO = getFLD(zs=zs, h_ML=h_ML)
+    FLDO = getFLDO(zs=zs, h_ML=h_ML)
     if FLDO == -1
         return sum_b
     end

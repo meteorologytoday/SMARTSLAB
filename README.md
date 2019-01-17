@@ -16,6 +16,10 @@ The current coupled model that I am using is [GFDL ESM2G](https://www.gfdl.noaa.
 
 ## Latest work (partial text of [progress](./notes/01-progress.md)) 
 
+# 2019-01-17
+- Do graphs of testing (see [04-MLMML-testing.md](./notes/04-MLMML-testing.md))
+
+
 # 2019-01-16
 - Convective adjustment is complete.
 - Next is to make a simple test using cmip5 data
@@ -26,5 +30,5 @@ The current coupled model that I am using is [GFDL ESM2G](https://www.gfdl.noaa.
 - For now I do not think it is important to make ocean semi-transparent.
 
 A 20 years test run with no wind:
-![](./saved_img/MLMML_test2.png)
+![](./notes/saved_img/MLMML_test2.png)
 
