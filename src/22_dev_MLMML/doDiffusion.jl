@@ -1,3 +1,5 @@
+using LinearAlgebra
+
 """
 
 function doDiffusion!(oc::OceanColumn)
@@ -118,6 +120,9 @@ function doDiffusion_BackwardEuler!(;
     FLDO :: Integer,
     Δt   :: Float64,
 )
+    if FLDO == -1
+        return b_ML
+    end
 
     # Diffusion of all layers
     # b_flux[i] means the flux from layer i+1 to i (upward > 0)
@@ -161,7 +166,13 @@ function doDiffusion_BackwardEuler!(;
     A[n, n  ] = 1.0 + αs[n] / Δzs[n-1]
     A[n, n-1] = - αs[n] / Δzs[n-1]
 
-
+    #=
+    println("n: ", n)
+    if n <=10
+        println("Det: ", det(A))
+        println("A: ", A)
+    end
+    =#
     bs_new = A \ bs_RHS
     new_b_ML = bs_new[1]
     if FLDO > 1

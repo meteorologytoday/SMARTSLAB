@@ -22,7 +22,7 @@ h_init = 50.0
 b_slope = 10.0 / D * MLMML.g * MLMML.α
 
 PERIOD = 360.0 * 86400.0
-TOTAL_TIME = 20 * PERIOD
+TOTAL_TIME = 100 * PERIOD
 
 SPINUP_TIME = 5 * PERIOD
 
@@ -118,12 +118,10 @@ end
 gs0 = GS.GridSpec(1, 2, width_ratios=[100,5])
 gs_l = GS.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs0[1], height_ratios=[1, 4])
 
-fig = plt[:figure](figsize=(12, 6))
+fig = plt[:figure](figsize=(20, 6))
 ax1 = plt[:subplot](gs_l[1])
 ax2 = plt[:subplot](gs_l[2])
 cax = plt[:subplot](gs0[2])
-
-
 
 
 ax1[:plot](t_day, J, label="J")

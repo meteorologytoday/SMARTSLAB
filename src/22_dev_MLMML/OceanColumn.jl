@@ -22,7 +22,8 @@ mutable struct OceanColumn
     )
         hs  = zs[1:end-1] - zs[2:end]
         Δzs = (hs[1:end-1] + hs[2:end]) / 2.0
-        return new(N, zs, bs, K, b_ML, h, FLDO, hs, Δzs)
+
+        return new(N, zs, Base.copy(bs), K, b_ML, h, FLDO, hs, Δzs)
     end
 end
 
@@ -38,48 +39,51 @@ function copy(oc::OceanColumn)
     )
 end
 
-
-function setBuoyancy!(
+#    if h < h_min
+#        throw(ErrorException(Formatting("h cannot be less than h_min: {:.2f}", h_min)))
+#    end
+ 
+function OC_setBuoyancy!(
     oc  ::OceanColumn;
     bs  ::Array{Float64,1},
     b_ML::Float64,
     h   ::Float64,
-    convective_adjustment::Bool=true
 )
 
-    if h < h_min
-        throw(ErrorException(Formatting("h cannot be less than h_min: {:.2f}", h_min)))
-    end
-    
+   
     oc.bs[:] = bs
-    setMixedLayer!(oc; b_ML=b_ML, h=h, convective_adjustment=false)
+    OC_setMixedLayer!(oc; b_ML=b_ML, h=h)
 
-    if convective_adjustment
-        doConvectiveAdjustment!(oc)
-    end
 end
 
-function setMixedLayer!(
+
+function setMixedLayer!(;
+    bs  :: Array{Float64, 1},
+    zs  :: Array{Float64, 1},
+    b_ML::Float64,
+    h   ::Float64
+)
+    FLDO  = getFLDO(zs=zs, h=h)
+
+    if FLDO > 1
+        bs[1:FLDO-1] .= b_ML
+    elseif FLDO == -1
+        bs[:] .= b_ML
+    end
+   
+    return FLDO 
+end
+
+function OC_setMixedLayer!(
     oc  ::OceanColumn;
     b_ML::Float64,
     h   ::Float64,
-    convective_adjustment::Bool=true
 )
 
-    if h < h_min
-        throw(ErrorException(Formatting("h cannot be less than h_min: {:.2f}", h_min)))
-    end
-
-    oc.h = h
-    oc.FLDO  = getFLDO(zs=oc.zs, h=h)
+    oc.h     = h
     oc.b_ML  = b_ML
-    if oc.FLDO > 1
-        oc.bs[1:oc.FLDO-1] .= oc.b_ML
-    end
-    
-    if convective_adjustment
-        doConvectiveAdjustment!(oc)
-    end
+    oc.FLDO  = setMixedLayer!(bs=oc.bs, zs=oc.zs, b_ML=b_ML, h=h)
+
 end
 
 
@@ -92,7 +96,7 @@ function makeBlankOceanColumn(;zs::Array{Float64, 1})
     FLDO  = 1
 
     oc = OceanColumn(N=N, zs=zs, bs=bs, K=K, b_ML=b_ML, h=h, FLDO=FLDO)
-    updateFLDO!(oc)
+    OC_updateFLDO!(oc)
 
     return oc
 end
@@ -103,7 +107,7 @@ function makeSimpleOceanColumn(;
     b_ML    :: Float64 = 1.0,
     h       :: Float64 = h_min,
     Δb      :: Float64 = 0.0,
-    K       :: Float64 = 1e-5,
+    K       :: Float64 = 1e-5
 )
 
 oc = makeBlankOceanColumn(zs=zs)
@@ -118,9 +122,9 @@ for i = 1:length(bs)
     end
 end
 
-setBuoyancy!(oc, bs=bs, b_ML=b_ML, h=h)
+OC_setBuoyancy!(oc, bs=bs, b_ML=b_ML, h=h)
 oc.K = K
-updateFLDO!(oc)
+OC_updateFLDO!(oc)
 
 return oc
 end

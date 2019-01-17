@@ -26,6 +26,8 @@ function getIntegratedBuoyancy(;
         throw(ErrorException("target_z cannot be deeper than the minimum of zs."))
     end
 
+
+    # Integrate mixed layer
     if -target_z < h
         return b_ML * ( - target_z )
     end
@@ -33,8 +35,14 @@ function getIntegratedBuoyancy(;
     sum_b = 0.0
     sum_b += h * b_ML
 
+
+    # Test if entire ocean column is mixed layer
     FLDO = getFLDO(zs=zs, h=h)
-    
+    if FLDO == -1
+        return sum_b
+    end
+
+    # Integrate FLDO
     if target_z > zs[FLDO+1]
         sum_b += bs[FLDO] * ( (-h) - target_z)
         return sum_b
@@ -42,7 +50,7 @@ function getIntegratedBuoyancy(;
     
     sum_b += bs[FLDO] * ( (-h) - zs[FLDO+1]) 
 
-    # Rest layers
+    # Integrate rest layers
     if FLDO < length(bs)
         for i = FLDO+1 : length(bs)
             if target_z < zs[i+1]

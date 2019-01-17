@@ -54,7 +54,7 @@ end
 
 
 
-function boundMLD(h)
+function boundMLD(h; h_min::Float64=h_min, h_max::Float64=h_max)
     return max(min(h, h_max), h_min)
 end
 
@@ -74,7 +74,7 @@ function getTKE(;
 end
 
 
-function updateFLDO!(oc::OceanColumn)
+function OC_updateFLDO!(oc::OceanColumn)
     oc.FLDO = getFLDO(zs=oc.zs, h=oc.h)
 end
 
@@ -87,10 +87,6 @@ function getFLDO(;
         if h < (zs[1] - zs[i+1])  # I don't use equality in order to avoid Δb = 0 during some initialization
             return i
         end
-    end
-
-    if h == (zs[1] - zs[end])
-        return length(zs)-1
     end
 
     return -1

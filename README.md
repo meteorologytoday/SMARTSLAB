@@ -14,7 +14,7 @@ The current coupled model that I am using is [GFDL ESM2G](https://www.gfdl.noaa.
 - [EC-Earth](http://www.ec-earth.org/)
 - [NCAR CESM](http://www.cesm.ucar.edu/experiments/cesm1.0/)
 
-## Latest work (partial text of [progress](./notes/01-progress.md) 
+## Latest work (partial text of [progress](./notes/01-progress.md)) 
 
 
 # 2019-01-14

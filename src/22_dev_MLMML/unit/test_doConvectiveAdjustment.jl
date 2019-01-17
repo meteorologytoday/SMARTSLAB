@@ -3,40 +3,86 @@ include("../MLMML.jl")
 using .MLMML
 
 zs = collect(Float64, range(0, stop=-1000, length=2001))
-h = MLMML.h_min
-b_ML = 10.0
-Δb   = -1e-2
-L = 500.0
+ocs = []
+adj_ocs = []
 
-oc = MLMML. makeSimpleOceanColumn(zs=zs)
-oc.bs[oc.FLDO:end] .-= Δb
+# OC1
+oc1 = MLMML.makeSimpleOceanColumn(zs=zs, Δb=-5e-3)
+push!(ocs, oc1)
 
-oc_1 = MLMML.copy(oc)
-MLMML.doConvectiveAdjustment!(oc)
-oc_2 = MLMML.copy(oc)
+# OC2
+oc2 = MLMML.makeSimpleOceanColumn(zs=zs, b_slope = -30.0 / 5000.0 * MLMML.g * MLMML.α)
+push!(ocs, oc2)
+
+# OC3
+k  = 2π / 500.0 * 3
+amp = 1e-3
+oc3 = MLMML.copy(oc1)
+
+mid_zs = (oc3.zs[1:end-1] + oc3.zs[2:end]) / 2.0
+oc3.bs[oc3.FLDO:end] += amp * sin.( (mid_zs[oc3.FLDO:end] .- mid_zs[oc3.FLDO]) * k )
+push!(ocs, oc3)
+
+# OC4
+noise_amp = amp / 2.0
+oc4 = MLMML.copy(oc3)
+oc4.bs[oc4.FLDO:end] += noise_amp * randn(length(oc4.bs) - oc4.FLDO + 1)
+push!(ocs, oc4)
 
 
-test_zs = collect(Float64, range(0, stop=-1000, length=2001))
-test_intb_1 = test_zs * 0.0
-test_intb_2 = test_zs * 0.0
-for i = 1:length(test_zs)
-    test_intb_1[i] = MLMML.getIntegratedBuoyancy(oc_1; target_z=test_zs[i])
-    test_intb_2[i] = MLMML.getIntegratedBuoyancy(oc_2; target_z=test_zs[i])
+for i = 1:length(ocs)
+    oc_copy = MLMML.copy(ocs[i])
+    MLMML.OC_doConvectiveAdjustment!(oc_copy)
+    push!(adj_ocs, oc_copy)
 end
 
+function genLineCoord(oc::MLMML.OceanColumn)
+
+    x = []
+    z = []
+
+    push!(x, oc.b_ML)
+    push!(z, 0.0, - oc.h)
+
+    if oc.FLDO != -1 && oc.FLDO < length(oc.bs)
+        push!(x, oc.bs[oc.FLDO])
+        push!(z, -oc.h, oc.zs[oc.FLDO+1])
+        for i=oc.FLDO+1:length(oc.bs)
+            push!(x, oc.bs[i])
+            push!(z, oc.zs[i], oc.zs[i+1])
+        end
+    end
+
+    x = repeat(x, inner=(2,))
+
+    return x, z
+end
+
+
 using PyPlot
-fig, ax = plt[:subplots](1, 3, figsize=(8,6), sharey=true)
+using Formatting
 
-ax[1][:plot](oc_1.bs, (zs[1:end-1] + zs[2:end])/2, "k-", label="bs_1")
-ax[1][:plot](oc_2.bs, (zs[1:end-1] + zs[2:end])/2, "r--", label="bs_2")
-ax[1][:legend]()
+for i = 1:length(ocs)
 
-ax[2][:plot](test_intb_1, test_zs, "k-", label="intb_1")
-ax[2][:plot](test_intb_2, test_zs, "r--", label="intb_2")
-ax[2][:legend]()
+    oc = ocs[i]
+    adj_oc = adj_ocs[i]
 
-ax[3][:plot](test_intb_2 - test_intb_1, test_zs, "b", label="intb_2 - intb_1")
-ax[3][:legend]()
+    fig, ax = plt[:subplots](1, 1, figsize=(8,6), sharey=true)
 
-plt[:show]()
+    ax[:plot](genLineCoord(oc)..., "k-", label="Original")
+    ax[:plot](genLineCoord(adj_oc)..., "r--", label="Adjusted")
 
+    ax[:set_title](
+        format("Integrated buoyancy: before={:.2e}, change={:.2e}",
+            MLMML.getIntegratedBuoyancy(oc),
+            MLMML.getIntegratedBuoyancy(adj_oc) - MLMML.getIntegratedBuoyancy(oc),
+        )
+    )
+    
+    
+    
+    ax[:legend]()
+
+    plt[:show]()
+
+end

@@ -33,9 +33,10 @@ function stepOceanColumn!(;
     #       conservation of buoyancy in water column
 
     #println("### h: ", oc.h)
-
     #println("FLDO:", oc.FLDO)
-    Δb = oc.b_ML - oc.bs[oc.FLDO]
+
+
+    Δb = (oc.FLDO != -1) ? oc.b_ML - oc.bs[oc.FLDO] : 0.0
     fric_u = getFricU(ua=ua)
     flag, val = calWeOrMLD(; h=oc.h, B=B0+J0, fric_u=fric_u, Δb=Δb) 
     #println("Before:" , oc.bs[10], "; oc.FLDO = ", oc.FLDO, "; Δb = ", Δb)
@@ -48,11 +49,9 @@ function stepOceanColumn!(;
         we = val 
         new_h = oc.h + Δt * we
     end
-    new_h = boundMLD(new_h)
-    #println("flag: ", flag, "; val:", val)    
+    new_h = boundMLD(new_h; h_max=oc.zs[1] - oc.zs[end])
+
     # 2
-    new_FLDO = getFLDO(zs=oc.zs, h=new_h)
-    #println("new_FLDO: ", new_FLDO)
     # 3
 
     # ML
