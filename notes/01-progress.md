@@ -9,6 +9,10 @@
 - NCAR-CESM [Download Link](https://www.earthsystemgrid.org/search.html?Project=CMIP5&Experiment=piControl&Ensemble=r1i1p1&Model=CESM1-WACCM&Frequency=Monthly&Product=output1)
 
 
+# 2019-01-16
+- Convective adjustment is complete.
+- Next is to make a simple test using cmip5 data
+
 # 2019-01-14
 - Complete a crude mixed layer model MLMML (Mixed-layer Model - Multiple Layers).
   Convective adjustment is currently only apply on mixed layer. Need to think on applying that to deep ocean.

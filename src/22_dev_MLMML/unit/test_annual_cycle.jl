@@ -1,6 +1,5 @@
 include("../MLMML.jl")
 include("../../lib/LinearRegression.jl")
-
 using Printf
 using Statistics: mean
 using .MLMML
@@ -11,9 +10,9 @@ using PyCall
 using PyPlot
 @pyimport matplotlib.gridspec as GS
 @printf("done.\n")
-
-D  = 5000.0
-N  = 5001
+#=
+D  = 2000.0
+N  = 2001
 zs = collect(Float64, range(0.0, stop=-D, length=N))
 
 Δb_init = 0.5 * 10.0 * MLMML.α * MLMML.g  
@@ -23,7 +22,7 @@ h_init = 50.0
 b_slope = 10.0 / D * MLMML.g * MLMML.α
 
 
-PERIOD_N = 50
+PERIOD_N = 30
 
 PERIOD_CNT = 360
 PERIOD_TIME = PERIOD_CNT * 86400.0
@@ -96,10 +95,7 @@ for i=1:length(oc.bs)
     
 
 end
-
-bs_rec -= repeat(bs_rec_mean, outer=(1, size(bs_rec)[2]))
-
-
+=#
 #=
 # Line plot figure
 plt[:figure]()
@@ -108,7 +104,6 @@ for i = 1:5:size(bs_rec)[2]
 end
 
 =#
-
 #=
 # Diagnose Plot
 fig, ax = plt[:subplots](5, 1, sharex=true)
@@ -131,7 +126,7 @@ end
 gs0 = GS.GridSpec(1, 2, width_ratios=[100,5])
 gs_l = GS.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs0[1], height_ratios=[1, 4])
 
-fig = plt[:figure](figsize=(20, 6))
+fig = plt[:figure](figsize=(12, 6))
 ax1 = plt[:subplot](gs_l[1])
 ax2 = plt[:subplot](gs_l[2])
 cax = plt[:subplot](gs0[2])
@@ -141,9 +136,11 @@ ax1[:plot](t_day, J, label="J")
 ax1[:plot]([t[1], t[end]]/86400.0, [0, 0], "k--")
 
 cmap = plt[:get_cmap]("jet")
-#clevs = range(0.07, stop=0.09, length=20) |> collect
-cb = ax2[:contourf](t_day, (zs[1:end-1] + zs[2:end]) / 2.0, bs_rec, #=clevs,=# cmap=cmap, extend="both", zorder=1, antialiased=false)
-plt[:colorbar](cb, cax=cax)
+clevs = (range(-1, stop=1, length=51) |> collect ) * 20
+cbmapping = ax2[:contourf](t_day, (zs[1:end-1] + zs[2:end]) / 2.0, bs_rec * 1e4, clevs, cmap=cmap, extend="both", zorder=1, antialiased=false)
+cb = plt[:colorbar](cbmapping, cax=cax)
+
+cb[:set_label]("Buoyancy anomaly [\$\\times\\,10^{-3}\\,\\mathrm{m} \\, \\mathrm{s}^{-2}\$]")
 
 ax2[:plot](t_day, - h_rec , "r--", linewidth=2, zorder=10)
 ax2[:set_ylim]([-D, 0])
@@ -167,5 +164,5 @@ ax1[:set_xticklabels](xticklabels)
 ax2[:set_xticklabels](xticklabels)
 
 using Formatting
-fig[:suptitle](format("N = {:d}", N))
+fig[:suptitle](format("Buoyancy anomaly (annual cycle removed) with Δt = 1 day, Δz = {:.1f}", zs[1]-zs[2]))
 plt[:show]()
