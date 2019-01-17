@@ -47,18 +47,18 @@ function stepOceanColumn!(;
     end
 
     fric_u = getFricU(ua=ua)
-    flag, val = calWeOrMLD(; h=oc.h, B=B0+J0, fric_u=fric_u, Δb=Δb) 
+    flag, val = calWeOrMLD(; h_ML=oc.h_ML, B=B0+J0, fric_u=fric_u, Δb=Δb) 
     #println("Before:" , oc.bs[10], "; oc.FLDO = ", oc.FLDO, "; Δb = ", Δb)
 
     # 1
     if flag == :MLD
         we = 0.0
-        new_h  = val
+        new_h_ML  = val
     elseif flag == :we
         we = val 
-        new_h = oc.h + Δt * we
+        new_h_ML = oc.h_ML + Δt * we
     end
-    new_h = boundMLD(new_h; h_max=oc.zs[1] - oc.zs[end])
+    new_h_ML = boundMLD(new_h_ML; h_ML_max=oc.zs[1] - oc.zs[end])
 
     # 2
     # 3
@@ -72,19 +72,19 @@ function stepOceanColumn!(;
         zs = oc.zs,
         bs = oc.bs,
         b_ML = oc.b_ML,
-        h  = oc.h,
-        target_z = -new_h
+        h_ML = oc.h_ML,
+        target_z = -new_h_ML
     )
   
     hb_chg_by_F = -(B0 + J0) * Δt
 
     #println(new_h, "; ", hb_new, ", ")
-    new_b_ML = (hb_new + hb_chg_by_F) / new_h
+    new_b_ML = (hb_new + hb_chg_by_F) / new_h_ML
     
     OC_setMixedLayer!(
         oc,
         b_ML=new_b_ML,
-        h=new_h
+        h_ML=new_h_ML
     )
     
     OC_doDiffusion_EulerBackward!(oc, Δt=Δt)

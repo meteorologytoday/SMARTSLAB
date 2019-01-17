@@ -8,7 +8,7 @@ function getIntegratedBuoyancy(oc::OceanColumn; target_z::Float64 = NaN)
         zs = oc.zs,
         bs = oc.bs,
         b_ML = oc.b_ML,
-        h = oc.h,
+        h_ML = oc.h_ML,
         target_z = target_z
     )
 end
@@ -18,7 +18,7 @@ function getIntegratedBuoyancy(;
     zs       :: Array{Float64,1},
     bs       :: Array{Float64,1},
     b_ML     :: Float64,
-    h        :: Float64,
+    h_ML     :: Float64,
     target_z :: Float64,
 )
 
@@ -28,27 +28,27 @@ function getIntegratedBuoyancy(;
 
 
     # Integrate mixed layer
-    if -target_z < h
+    if -target_z < h_ML
         return b_ML * ( - target_z )
     end
 
     sum_b = 0.0
-    sum_b += h * b_ML
+    sum_b += h_ML * b_ML
 
 
     # Test if entire ocean column is mixed layer
-    FLDO = getFLDO(zs=zs, h=h)
+    FLDO = getFLD(zs=zs, h_ML=h_ML)
     if FLDO == -1
         return sum_b
     end
 
     # Integrate FLDO
     if target_z > zs[FLDO+1]
-        sum_b += bs[FLDO] * ( (-h) - target_z)
+        sum_b += bs[FLDO] * ( (-h_ML) - target_z)
         return sum_b
     end
     
-    sum_b += bs[FLDO] * ( (-h) - zs[FLDO+1]) 
+    sum_b += bs[FLDO] * ( (-h_ML) - zs[FLDO+1]) 
 
     # Integrate rest layers
     if FLDO < length(bs)

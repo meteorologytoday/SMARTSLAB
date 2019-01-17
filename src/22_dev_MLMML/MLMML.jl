@@ -54,8 +54,8 @@ end
 
 
 
-function boundMLD(h; h_min::Float64=h_min, h_max::Float64=h_max)
-    return max(min(h, h_max), h_min)
+function boundMLD(h_ML; h_ML_min::Float64=h_ML_min, h_ML_max::Float64=h_ML_max)
+    return max(min(h_ML, h_ML_max), h_ML_min)
 end
 
 
@@ -75,16 +75,16 @@ end
 
 
 function OC_updateFLDO!(oc::OceanColumn)
-    oc.FLDO = getFLDO(zs=oc.zs, h=oc.h)
+    oc.FLDO = getFLDO(zs=oc.zs, h_ML=oc.h_ML)
 end
 
 function getFLDO(;
-    zs :: Array{Float64,1},
-    h  :: Float64
+    zs   :: Array{Float64,1},
+    h_ML :: Float64
 )
     for i = 1:length(zs)-1
         #println("h:", h, "; Δzs= ", zs[1] - zs[i+1])
-        if h < (zs[1] - zs[i+1])  # I don't use equality in order to avoid Δb = 0 during some initialization
+        if h_ML < (zs[1] - zs[i+1])  # I don't use equality in order to avoid Δb = 0 during some initialization
             return i
         end
     end

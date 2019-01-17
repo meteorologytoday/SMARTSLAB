@@ -3,8 +3,8 @@
 c_p = 3985.0   # J / kg / K
 ρ   = 1027.0   # kg / m^3
 g   = 9.8      # m / s^2
-h_min = 30.0
-h_max = 1000.0
+h_ML_min = 30.0
+h_ML_max = 1000.0
 
 """
     printConstants()

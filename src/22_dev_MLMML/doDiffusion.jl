@@ -17,7 +17,7 @@ new_b_ML = doDiffusion!(
     Δzs=oc.Δzs,
     bs=oc.bs,
     b_ML=oc.b_ML,
-    h=oc.h,
+    h_ML=oc.h_ML,
     K=oc.K,
     FLDO=oc.FLDO,
     Δt=Δt
@@ -41,7 +41,7 @@ function doDiffusion!(;
     Δzs  :: Array{Float64, 1}, 
     bs   :: Array{Float64, 1}, 
     b_ML :: Float64,
-    h    :: Float64,
+    h_ML :: Float64,
     K    :: Float64,
     FLDO :: Integer,
     Δt   :: Float64,
@@ -51,8 +51,8 @@ function doDiffusion!(;
     # b_flux[i] means the flux from layer i+1 to i (upward > 0)
     # the extra b_flux[end] is artificial for easier programming
 
-    FLDO_h = -zs[FLDO+1] - h
-    ML_FLDO_Δz = min((h + FLDO_h) / 2.0, FLDO_h)
+    FLDO_h = -zs[FLDO+1] - h_ML
+    ML_FLDO_Δz = min((h_ML + FLDO_h) / 2.0, FLDO_h)
     stable_diffusion = checkDiffusionStability(Δz=ML_FLDO_Δz, K=K, Δt=Δt) 
 
 
@@ -64,7 +64,7 @@ function doDiffusion!(;
     if stable_diffusion
         ML_b_flux = K * (bs[FLDO] - b_ML) / ML_FLDO_Δz
     else
-        ML_jump_Δz = min((h + hs[FLDO+1])/2.0, hs[FLDO+1])
+        ML_jump_Δz = min((h_ML + hs[FLDO+1])/2.0, hs[FLDO+1])
         ML_b_flux = K * (bs[FLDO+1] - b_ML) / ML_jump_Δz
         b_flux[FLDO] = ML_b_flux
     end
@@ -75,14 +75,14 @@ function doDiffusion!(;
     end
 
     if stable_diffusion
-        new_b_ML += ML_b_flux / h * Δt
+        new_b_ML += ML_b_flux / h_ML * Δt
         bs[FLDO] += (b_flux[FLDO] - ML_b_flux) / FLDO_h * Δt
     else
         # let bs[FLDO] be (b_ML + bs[FLDO+1]) / 2 and 
         # integrated buoyancy of ML and FLDO remains the same.
 
-        A = h * b_ML + FLDO_h * bs[FLDO]
-        new_b_ML = (A - FLDO_h * bs[FLDO+1] / 2.0) / (h + FLDO_h / 2.0)
+        A = h_ML * b_ML + FLDO_h * bs[FLDO]
+        new_b_ML = (A - FLDO_h * bs[FLDO+1] / 2.0) / (h_ML + FLDO_h / 2.0)
         bs[FLDO] = (new_b_ML + bs[FLDO+1]) / 2.0
     end
 
@@ -101,7 +101,7 @@ function OC_doDiffusion_EulerBackward!(oc::OceanColumn; Δt::Float64)
         zs=oc.zs,
         bs=oc.bs,
         b_ML=oc.b_ML,
-        h=oc.h,
+        h_ML=oc.h_ML,
         K=oc.K,
         FLDO=oc.FLDO,
         Δt=Δt,
@@ -115,7 +115,7 @@ function doDiffusion_BackwardEuler!(;
     zs   :: Array{Float64, 1}, 
     bs   :: Array{Float64, 1}, 
     b_ML :: Float64,
-    h    :: Float64,
+    h_ML :: Float64,
     K    :: Float64,
     FLDO :: Integer,
     Δt   :: Float64,
@@ -141,13 +141,13 @@ function doDiffusion_BackwardEuler!(;
     #println("length(zs) = ", length(zs))
     #println("length(Δzs) = ", length(Δzs))
 
-    hs[1] = h
-    hs[2] = -zs[FLDO+1] - h
+    hs[1] = h_ML
+    hs[2] = -zs[FLDO+1] - h_ML
     hs[3:end] = zs[FLDO+1:end-1] - zs[FLDO+2:end]
 
     #println(hs)
 
-    Δzs[1] = max(min((hs[1] + hs[2]) / 2.0, hs[2]), Δt * K / h_min)
+    Δzs[1] = max(min((hs[1] + hs[2]) / 2.0, hs[2]), Δt * K / h_ML_min)
     Δzs[2:end] = (hs[2:end-1] + hs[3:end]) / 2.0
 
     αs = Δt * K ./ hs
