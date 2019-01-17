@@ -4,6 +4,7 @@ include("genLineCoord.jl")
 using Printf
 using Statistics: mean
 using .MLMML
+using Formatting
 
 @printf("Importing PyPlot... ")
 using PyCall
@@ -19,7 +20,7 @@ zs = collect(Float64, range(0.0, stop=-D, length=N))
 b_ML_0 = 1.0
 h_ML_0 = 50.0
 
-b_slope = 10.0 / D * MLMML.g * MLMML.α
+b_slope = 2.0 / 4000.0 * MLMML.g * MLMML.α
 
 PERIOD = 360.0 * 86400.0
 TOTAL_TIME = .25 * PERIOD
@@ -154,10 +155,17 @@ end
 for i = 1:10:size(bs_rec)[2]
     println(i)
     x, z = genLineCoord(b_ML=b_rec[i], h_ML=h_rec[i], zs=oc.zs, bs=bs_rec[:,i], FLDO=FLDO_rec[i])
-    bs_ax[:plot](x, z)
+    if i == 1
+        bs_ax[:plot](x, z, "k-", label="Init")
+    else
+        bs_ax[:plot](x, z, "--")
+    end
     bs_ax[:text](b_rec[i], 5, "$(i-1)", va="bottom", ha="center")
 end
+bs_ax[:legend]()
 
+bs_ax[:set_ylabel]("Z [m]")
+bs_ax[:set_xlabel]("Buoyancy [\$\\mathrm{m}\\,\\mathrm{s}^{-2}\$]")
 bs_ax[:set_ylim]([-100,10])
 bs_ax[:set_xlim]([.98,1.005])
 
