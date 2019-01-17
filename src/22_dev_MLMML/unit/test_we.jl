@@ -1,4 +1,4 @@
-include("MLMML.jl")
+include("../MLMML.jl")
 
 using Printf
 using Statistics: mean
@@ -48,7 +48,7 @@ oc = MLMML.makeSimpleOceanColumn(
     b_ML    = b_ML_init,
     h       = h_init,
     Δb      = Δb_init,
-    K       = 1e-5
+    K       = 0.0
 )
 
 #if ! MLMML.checkDiffusionStability(oc, Δt=Δt)
@@ -59,7 +59,7 @@ oc = MLMML.makeSimpleOceanColumn(
 
 h_rec = [h_init]
 b_rec = [b_ML_init]
-hb_rec = [MLMML.getIntegratedBuoyancy(oc, target_z=-h_init)]
+hb_rec = [MLMML.getIntegratedBuoyancy(oc)]
 we_rec = []
 Δb_rec = [oc.b_ML - oc.bs[oc.FLDO]]
 bs_rec = zeros(Float64, length(oc.bs), length(t))
@@ -79,7 +79,7 @@ for k = 1:length(t)-1
     push!(h_rec, oc.h)
     push!(b_rec, oc.b_ML)
     push!(Δb_rec, info[:Δb])
-    push!(hb_rec, MLMML.getIntegratedBuoyancy(oc, target_z=-oc.h))
+    push!(hb_rec, MLMML.getIntegratedBuoyancy(oc))#, target_z=-oc.h))
     push!(we_rec, ( info[:flag] == :we ) ? info[:val] : NaN)
     bs_rec[:, k+1] = oc.bs
 end
@@ -98,6 +98,8 @@ end
 
 
 fig, ax = plt[:subplots](5, 1, sharex=true)
+
+fig[:suptitle]("Diagnose of an idealize case")
 
 ax[1][:plot](t_day, - h_rec, label="h")
 ax[2][:plot](t_day, hb_rec, "k-", label="hb")
@@ -129,7 +131,8 @@ ax1[:plot]([t[1], t[end]]/86400.0, [0, 0], "k--")
 
 cmap = plt[:get_cmap]("jet")
 clevs = range(0.07, stop=0.09, length=20) |> collect
-cb = ax2[:contourf](t_day, (zs[1:end-1] + zs[2:end]) / 2.0, bs_rec, clevs, cmap=cmap, extend="both", zorder=1, antialiased=false)
+#cb = ax2[:contourf](t_day, (zs[1:end-1] + zs[2:end]) / 2.0, bs_rec, clevs, cmap=cmap, extend="both", zorder=1, antialiased=false)
+cb = ax2[:contourf](t_day, (zs[1:end-1] + zs[2:end]) / 2.0, bs_rec, cmap=cmap, extend="both", zorder=1, antialiased=false)
 plt[:colorbar](cb, cax=cax)
 
 ax2[:plot](t_day, - h_rec , "r--", linewidth=2, zorder=10)

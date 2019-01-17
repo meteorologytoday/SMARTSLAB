@@ -1,11 +1,13 @@
 function OC_doConvectiveAdjustment!(oc::OceanColumn)
-    oc.b_ML, oc.h, oc.FLDO = doConvectiveAdjustment!(
+    if_adjust, oc.b_ML, oc.h, oc.FLDO = doConvectiveAdjustment!(
         zs   = oc.zs,
         bs   = oc.bs,
         h    = oc.h,
         b_ML = oc.b_ML,
         FLDO = oc.FLDO,
-    ) 
+    )
+
+    return if_adjust
 end
 
 
@@ -22,9 +24,11 @@ function doConvectiveAdjustment!(;
     b_ML :: Float64,
     FLDO :: Integer,
 )
+    
+    if_adjust = false
 
     if FLDO == -1
-        return b_ML, h, FLDO 
+        return if_adjust, b_ML, h, FLDO 
     end
 
     # 1. Search from bottom to see if buoyancy is monotically increasing
@@ -34,15 +38,17 @@ function doConvectiveAdjustment!(;
     # 4. Use b_min to decide the bottom layer going to be mixed.
     # 5. Mix this interval.
 
-   new_b_ML = b_ML
-   new_h = h
-   new_FLDO = FLDO
+    new_b_ML = b_ML
+    new_h = h
+    new_FLDO = FLDO
 
-   stage = :reset
-   peak_layer = 0
-   top_layer = 0
-   bot_layer = 0
-   b_peak = 0.0
+    stage = :reset
+    peak_layer = 0
+    top_layer = 0
+    bot_layer = 0
+    b_peak = 0.0
+
+
 
    for i = length(bs):-1:FLDO
 
@@ -153,7 +159,7 @@ function doConvectiveAdjustment!(;
 
     end
 
-    return new_b_ML, new_h, new_FLDO
+    return if_adjust, new_b_ML, new_h, new_FLDO
 end
 
            

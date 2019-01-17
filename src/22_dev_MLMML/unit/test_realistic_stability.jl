@@ -29,7 +29,7 @@ h_init = MLMML.h_min
 b_slope = 2.0 / 4000.0 * MLMML.g * MLMML.α
 
 
-PERIODS_SPINUP = 100
+PERIODS_SPINUP = 1000
 PERIODS_WANT = 200
 PERIODS_TOTAL = PERIODS_SPINUP + PERIODS_WANT
 
@@ -52,7 +52,7 @@ J = J0 * sin.(ω*t)
 E = J0/ω * (cos.(ω*t) .- 1.0)
 
 U10 = zeros(Float64, length(t))
-U10 .= 0.0 #.+ 2.0 * rand(length(U10)) 
+U10 .= abs.(2.0 * randn(length(U10)))
 
 oc = MLMML.makeSimpleOceanColumn(
     zs      = zs,
@@ -67,12 +67,13 @@ oc = MLMML.makeSimpleOceanColumn(
 #    throw(ErrorException("Stability criteria does not fulfill."))
 #end
 
-
+mon_bs = zeros(Float64, length(oc.bs), 12)
 
 h_rec = [h_init]
 b_rec = [b_ML_init]
 hb_rec = [MLMML.getIntegratedBuoyancy(oc)]
-we_rec = []
+we_rec = [NaN]
+convadj_rec = [false]
 Δb_rec = [oc.b_ML - oc.bs[oc.FLDO]]
 bs_rec = zeros(Float64, length(oc.bs), length(t))
 
@@ -93,6 +94,7 @@ for k = 1:length(t)-1
     push!(Δb_rec, info[:Δb])
     push!(hb_rec, MLMML.getIntegratedBuoyancy(oc))
     push!(we_rec, ( info[:flag] == :we ) ? info[:val] : NaN)
+    push!(convadj_rec, info[:convective_adjustment])
     bs_rec[:, k+1] = oc.bs
 end
 
@@ -114,12 +116,14 @@ avg_t = zeros(Int(length(t)/30))
 avg_bs_rec = zeros(size(bs_rec)[1], length(avg_t))
 avg_h_rec  = zeros(length(avg_t))
 avg_J = zeros(length(avg_t))
+avg_convadj_rec = zeros(length(avg_t))
 for i = 1:length(avg_t)
     avg_rng = (1+30*(i-1)):30*i
     avg_t[i] = mean(t[avg_rng])
     avg_h_rec[i] = mean(h_rec[avg_rng])
     avg_J[i] = mean(J[avg_rng])
     avg_bs_rec[:, i] = mean(bs_rec[:, avg_rng], dims=2)
+    avg_convadj_rec[i] = any(convadj_rec[avg_rng])
 end
 avg_t .-= avg_t[1]
 
@@ -127,14 +131,15 @@ t=avg_t
 bs_rec=avg_bs_rec
 h_rec=avg_h_rec
 J = avg_J
-
+convadj_rec = avg_convadj_rec
 
 for i=1:length(oc.bs)
     b_timeseries = bs_rec[i, :]
     β = LinearRegression(t, b_timeseries)
     b_timeseries -= β[1] .+ β[2] * t
     #b_cyc_signal = repeat(mean( reshape( b_timeseries, PERIOD_CNT, :), dims=2)[:,1], outer=(PERIODS_WANT,))
-    b_cyc_signal = repeat(mean( reshape( b_timeseries, 12, :), dims=2)[:,1], outer=(PERIODS_WANT,))
+    mon_bs[i, :] = mean( reshape( b_timeseries, 12, :), dims=2)[:,1]
+    b_cyc_signal = repeat(mon_bs[i, :], outer=(PERIODS_WANT,))
     bs_rec[i, :] = b_timeseries - b_cyc_signal
 end
 
@@ -142,6 +147,7 @@ end
 
 t_day = t / 86400.0
 t_mon = t / 86400 / 30.0
+mid_zs = (zs[1:end-1] + zs[2:end]) / 2.0
 
 #=
 # Line plot figure
@@ -169,6 +175,8 @@ for a in ax
 end
 =#
 
+
+
 # Hovmoller diagram
 gs0 = GS.GridSpec(1, 2, width_ratios=[100,5])
 gs_l = GS.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs0[1], height_ratios=[1, 4])
@@ -184,13 +192,22 @@ ax1[:plot]([t_day[1], t_day[end]], [0, 0], "k--")
 
 cmap = plt[:get_cmap]("jet")
 clevs = (range(-1, stop=1, length=51) |> collect ) 
-cbmapping = ax2[:contourf](t_day, (zs[1:end-1] + zs[2:end]) / 2.0, bs_rec * 1e5, clevs, cmap=cmap, extend="both", zorder=1, antialiased=false)
+cbmapping = ax2[:contourf](t_day, mid_zs, bs_rec * 1e5, clevs, cmap=cmap, extend="both", zorder=1, antialiased=false)
 cb = plt[:colorbar](cbmapping, cax=cax)
 
 cb[:set_label]("Buoyancy anomaly [\$\\times\\,10^{-3}\\,\\mathrm{m} \\, \\mathrm{s}^{-2}\$]")
 
+
+convadj_rec[convadj_rec .== 0.0] .= NaN
+ax2[:scatter](t_day, -600.0 * convadj_rec, marker="^")
+
+
 #ax2[:plot](t_day, - h_rec , "r--", linewidth=2, zorder=10)
 ax2[:set_ylim]([-750, 0])
+
+
+
+
 
 tlim = [t_day[1], t_day[end]]
 ax1[:set_xlim](tlim)
@@ -214,4 +231,17 @@ ax2[:set_xticklabels](xticklabels)
 
 using Formatting
 fig[:suptitle](format("Buoyancy anomaly (annual cycle removed) with Δt = 1 day, Δz = {:.1f}", zs[1]-zs[2]))
+plt[:show]()
+
+
+# Monthly structure
+fig, ax = plt[:subplots](1, 1, figsize=(8,6))
+
+for i = 1:size(mon_bs)[2]
+    ax[:plot](mon_bs[:, i], mid_zs, label="$i")
+    ax[:text](mon_bs[1, i], zs[1]+5, "$i", va="bottom", ha="center")
+end
+ax[:set_ylim]([-500, 100])
+ax[:legend]()
+
 plt[:show]()

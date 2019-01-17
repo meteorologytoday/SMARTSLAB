@@ -88,12 +88,13 @@ function stepOceanColumn!(;
     )
     
     OC_doDiffusion_EulerBackward!(oc, Δt=Δt)
-    OC_doConvectiveAdjustment!(oc)
+    if_convective_adjustment = OC_doConvectiveAdjustment!(oc)
     #println(oc.b_ML - oc.bs[oc.FLDO])
     return Dict(
         :flag => flag,
         :val  => val,
         :Δb   => Δb,
+        :convective_adjustment => if_convective_adjustment
     )
 end
 
