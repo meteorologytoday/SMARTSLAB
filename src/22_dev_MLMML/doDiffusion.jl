@@ -9,7 +9,7 @@ function doDiffusion!(oc::OceanColumn)
 This function modifies `bs` and `b_ML`
 
 """
-function doDiffusion!(oc::OceanColumn; Δt::Float64)
+function OC_doDiffusion!(oc::OceanColumn; Δt::Float64)
 
 new_b_ML = doDiffusion!(
     hs=oc.hs,
@@ -95,7 +95,7 @@ end
 
 
 
-function doDiffusion_EulerBackward!(oc::OceanColumn; Δt::Float64)
+function OC_doDiffusion_EulerBackward!(oc::OceanColumn; Δt::Float64)
     
     new_b_ML = doDiffusion_BackwardEuler!(
         zs=oc.zs,

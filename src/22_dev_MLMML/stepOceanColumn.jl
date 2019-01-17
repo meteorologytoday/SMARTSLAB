@@ -37,6 +37,15 @@ function stepOceanColumn!(;
 
 
     Δb = (oc.FLDO != -1) ? oc.b_ML - oc.bs[oc.FLDO] : 0.0
+
+    # After convective adjustment, there still might
+    # be some numerical error making Δb slightly negative
+    # (the one I got is like -1e-15). So I set a tolarence
+    # ( 0.001 K ≈ 3e-6 m/s^2 ).
+    if Δb < 0.0 && abs(Δb) <= 3e-6
+        Δb = 0.0
+    end
+
     fric_u = getFricU(ua=ua)
     flag, val = calWeOrMLD(; h=oc.h, B=B0+J0, fric_u=fric_u, Δb=Δb) 
     #println("Before:" , oc.bs[10], "; oc.FLDO = ", oc.FLDO, "; Δb = ", Δb)
@@ -72,15 +81,15 @@ function stepOceanColumn!(;
     #println(new_h, "; ", hb_new, ", ")
     new_b_ML = (hb_new + hb_chg_by_F) / new_h
     
-    setMixedLayer!(
+    OC_setMixedLayer!(
         oc,
         b_ML=new_b_ML,
-        h=new_h,
-        convective_adjustment=false
+        h=new_h
     )
     
-    doDiffusion_EulerBackward!(oc, Δt=Δt)
-    doConvectiveAdjustment!(oc)
+    OC_doDiffusion_EulerBackward!(oc, Δt=Δt)
+    OC_doConvectiveAdjustment!(oc)
+    #println(oc.b_ML - oc.bs[oc.FLDO])
     return Dict(
         :flag => flag,
         :val  => val,

@@ -1,4 +1,5 @@
-include("MLMML.jl")
+include("../MLMML.jl")
+include("../../lib/LinearRegression.jl")
 
 using Printf
 using Statistics: mean
@@ -11,8 +12,8 @@ using PyPlot
 @pyimport matplotlib.gridspec as GS
 @printf("done.\n")
 
-D  = 1000.0
-N  = 1001
+D  = 5000.0
+N  = 5001
 zs = collect(Float64, range(0.0, stop=-D, length=N))
 
 Δb_init = 0.5 * 10.0 * MLMML.α * MLMML.g  
@@ -21,14 +22,18 @@ h_init = 50.0
 
 b_slope = 10.0 / D * MLMML.g * MLMML.α
 
-PERIOD = 360.0 * 86400.0
-TOTAL_TIME = 100 * PERIOD
 
-SPINUP_TIME = 5 * PERIOD
+PERIOD_N = 50
+
+PERIOD_CNT = 360
+PERIOD_TIME = PERIOD_CNT * 86400.0
+TOTAL_TIME = PERIOD_N * PERIOD_TIME
+
+SPINUP_TIME = 5 * PERIOD_TIME
 
 
 ω = 2π/360.0/86400.0
-t = collect(Float64, range(0.0, step=86400.0, stop=TOTAL_TIME))
+t = collect(Float64, range(0.0, step=86400.0, stop=TOTAL_TIME))[1:end-1]
 Δt = t[2] - t[1]
 t_day = t / 86400.0
 
@@ -82,8 +87,16 @@ for k = 1:length(t)-1
     bs_rec[:, k+1] = oc.bs
 end
 
+for i=1:length(oc.bs)
+    b_timeseries = bs_rec[i, :]
+    β = LinearRegression(t, b_timeseries)
+    b_timeseries -= β[1] .+ β[2] * t
+    b_cyc_signal = repeat(mean( reshape( b_timeseries, PERIOD_CNT, :), dims=2)[:,1], outer=(PERIOD_N,))
+    bs_rec[i, :] = b_timeseries - b_cyc_signal
+    
 
-bs_rec_mean = mean(bs_rec, dims=2)
+end
+
 bs_rec -= repeat(bs_rec_mean, outer=(1, size(bs_rec)[2]))
 
 
