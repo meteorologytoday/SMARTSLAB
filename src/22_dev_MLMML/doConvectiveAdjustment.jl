@@ -66,7 +66,7 @@ function doConvectiveAdjustment!(;
             Δb = bs[i] - ((i==FLDO) ? b_ML : bs[i-1])
             #println("FLDO:", FLDO, "; i:", i, "; Δb:", Δb)
             if Δb > 0.0
-                #println("ONSET")
+                if_adjust = true
                 stage = :search_top_layer
                 peak_layer = i
                 b_peak = bs[peak_layer]

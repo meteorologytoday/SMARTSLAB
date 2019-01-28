@@ -58,7 +58,7 @@ function stepOceanColumn!(;
         we = val 
         new_h_ML = oc.h_ML + Δt * we
     end
-    new_h_ML = boundMLD(new_h_ML; h_ML_max=oc.zs[1] - oc.zs[end])
+    new_h_ML = boundMLD(new_h_ML; h_ML_max=min(h_ML_max, oc.zs[1]-oc.zs[end]))
 
     # 2
     # 3
