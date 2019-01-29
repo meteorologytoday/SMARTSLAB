@@ -24,7 +24,7 @@ subroutine recv(fp, msg)
     io = 0
     read (fp%recv_fd, '(A)', iostat=io) msg
 
-    if (io == 0) then
+    if (io == 0 .or. io == -1) then
         print *, "Successfully read."
     else
         print *, "Weird io state: ", io

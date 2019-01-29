@@ -1,7 +1,7 @@
 
 module FifoPhoneMod
 
-export FifoPhone, testConnection, recv, send
+export FifoPhone, hello, recv, send
 
 mutable struct FifoPhone
 
