@@ -1,53 +1,19 @@
 program exp_FIFO
+
+use FifoPhoneMod
+
 implicit none
 
-integer :: fd1 = 10, io
-logical :: file_exists
-character(len=1024) :: input, fifo="phone.fifo"
+type(FifoPhone) :: fp
+character(256)  :: msg
+    fp%recv_fd = 10
+    fp%send_fd = 11
+    fp%recv_fn = "mymodel2cesm.fifo"
+    fp%send_fn = "cesm2mymodel.fifo"
 
-    file_exists = .false.
+    call hello(fp)
+    !call recv(fp, msg)
 
-    do while (file_exists .eqv. .false.)
-        print *, "Try to check if file is there..."
-        inquire(FILE=fifo, EXIST=file_exists)
-        call Sleep(2)
-    end do
-
-    io = 1
-
-    do while (io /= 0)
-        print *, "Let's open it... "
-        io = 0
-        open(fd1, file=fifo, form="formatted" , action="write", iostat=io)
-        !open(fd1, file=fifo, form="formatted", access="stream" , action="read", iostat=io)
-        print *, io
-        call Sleep(1)
-    end do
-
-    do
-        print *, "Try to write"
-
-        input = "test"
-
-        io = 0
-        write (fd1, *, iostat=io) input
-
-        if (io == 0) then
-            print *, "Successfully write: [", input, "]."
-        else
-            print *, "Weird io state: ", io
-
-        end if
-        
-        call Sleep(2)
-    end do
-
-
-    close(fd1)
-
-
-
-
-
+    print *, "Program ends."
 
 end program

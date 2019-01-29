@@ -16,7 +16,7 @@ mutable struct FifoPhone
     end
 end
 
-function testConnection(fp::FifoPhone)
+function hello(fp::FifoPhone)
     while !isfifo(fp.recv_fn) || !isfifo(fp.send_fn)
         println("Cannot find two fifos, sleep and do it again.")
         sleep(1)
