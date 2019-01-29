@@ -60,7 +60,7 @@ subroutine obtainLock(MI)
         inquire(file=MI%lock_fn, exist=file_exists)
 !        print *, "file_exists: ", file_exists
         if (file_exists .eqv. .true.) then
-            call sleep(1)
+            !call sleep(1)
             cycle
         end if
         
@@ -71,7 +71,7 @@ subroutine obtainLock(MI)
         if (io == 0) then
             exit
         else
-            call sleep(1)
+            !call sleep(1)
             cycle
         end if
     end do 
