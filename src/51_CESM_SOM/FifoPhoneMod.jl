@@ -34,7 +34,7 @@ function recv(fp::FifoPhone)
     local result
 
     open(fp.recv_fn, "r") do io
-        result = read(io, String)
+        result = strip(read(io, String))
     end
 
     return result
