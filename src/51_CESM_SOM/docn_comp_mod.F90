@@ -481,6 +481,64 @@ CONTAINS
           o2x%rAttr(kswp ,n) = swp
        enddo
 
+    case('SOM_SMARTSLAB')
+       lsize = mct_avect_lsize(o2x)
+       do n = 1,SDOCN%nstreams
+          call shr_dmodel_translateAV(SDOCN%avs(n),avstrm,avifld,avofld,rearr)
+       enddo
+       if (firstcall) then
+
+
+        ! Start read fifo
+        
+
+
+        ! setup a connection between julia and foratran. what should i use? nc
+        ! file? or a text file? what should julia know about this? 
+        ! Julia should know the grid configuration here? NO, this should happen
+        ! in case.build stage. So, ideally, the connection is only about passing
+        ! atmospheric data into julia. I believe it is benificial to try making
+        ! a standard in case in the future i need to transplant to other
+        ! language. 
+
+
+        ! information passing during each iteration: dt, wind_stress, solar
+        ! radiation, heat fluxes, 
+
+
+          do n = 1,lsize
+             if (.not. read_restart) then
+                somtp(n) = o2x%rAttr(kt,n) + TkFrz
+             endif
+             o2x%rAttr(kt,n) = somtp(n)
+             o2x%rAttr(kq,n) = 0.0_R8
+          enddo
+       else   ! firstcall
+          tfreeze = shr_frz_freezetemp(o2x%rAttr(ks,:)) + TkFrz
+          do n = 1,lsize
+             if (imask(n) /= 0) then
+                !--- pull out h from av for resuse below ---
+                hn = avstrm%rAttr(kh,n)
+                !--- compute new temp ---
+                o2x%rAttr(kt,n) = somtp(n) + &
+                     (x2o%rAttr(kswnet,n) + &  ! shortwave
+                     x2o%rAttr(klwup ,n) + &  ! longwave
+                     x2o%rAttr(klwdn ,n) + &  ! longwave
+                     x2o%rAttr(ksen  ,n) + &  ! sensible
+                     x2o%rAttr(klat  ,n) + &  ! latent
+                     x2o%rAttr(kmelth,n) - &  ! ice melt
+                     avstrm%rAttr(kqbot ,n) - &  ! flux at bottom
+                     (x2o%rAttr(ksnow,n)+x2o%rAttr(krofi,n))*latice) * &  ! latent by prec and roff
+                     dt/(cpsw*rhosw*hn)
+                !--- compute ice formed or melt potential ---
+                o2x%rAttr(kq,n) = (tfreeze(n) - o2x%rAttr(kt,n))*(cpsw*rhosw*hn)/dt  ! ice formed q>0
+                o2x%rAttr(kt,n) = max(tfreeze(n),o2x%rAttr(kt,n))                    ! reset temp
+                somtp(n) = o2x%rAttr(kt,n)                                        ! save temp
+             endif
+          enddo
+       endif   ! firstcall
+
+
     case('SOM')
        lsize = mct_avect_lsize(o2x)
        do n = 1,SDOCN%nstreams
