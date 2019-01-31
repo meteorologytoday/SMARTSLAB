@@ -1,6 +1,11 @@
 #ifdef AIX
 @PROCESS ALIAS_SIZE(805306368)
 #endif
+
+include "./lib/field_tools.f90"
+include "./lib/MailboxMod.f90"
+
+
 module docn_comp_mod
 
   ! !USES:
@@ -28,6 +33,12 @@ module docn_comp_mod
   use docn_shr_mod   , only: rest_file      ! namelist input
   use docn_shr_mod   , only: rest_file_strm ! namelist input
   use docn_shr_mod   , only: nullstr
+
+! XTT USES
+
+  use field_tools
+  use MailboxMod
+
 
   ! !PUBLIC TYPES:
   implicit none
@@ -138,6 +149,8 @@ CONTAINS
     character(*), parameter :: subName = "(docn_comp_init) "
     !-------------------------------------------------------------------------------
 
+
+
     call t_startf('DOCN_INIT')
 
     !----------------------------------------------------------------------------
@@ -167,7 +180,7 @@ CONTAINS
        call shr_strdata_init(SDOCN,mpicom,compid,name='ocn', &
             scmmode=scmmode,scmlon=scmlon,scmlat=scmlat, calendar=calendar)
     else
-       if (datamode == 'SST_AQUAPANAL' .or. datamode == 'SST_AQUAPFILE' .or. datamode == 'SOM_AQUAP') then
+       if (datamode == 'SST_AQUAPANAL' .or. datamode == 'SST_AQUAPFILE' .or. datamode == 'SOM_AQUAP' .or. datamode == 'SSM_AQUAP') then
           ! Special logic for either prescribed or som aquaplanet - overwrite and
           call shr_strdata_init(SDOCN,mpicom,compid,name='ocn', calendar=calendar, reset_domain_mask=.true.)
        else
@@ -299,7 +312,7 @@ CONTAINS
           endif
        endif
        call shr_mpi_bcast(exists,mpicom,'exists')
-       if (trim(datamode) == 'SOM' .or. trim(datamode) == 'SOM_AQUAP') then
+       if (trim(datamode) == 'SOM' .or. trim(datamode) == 'SOM_AQUAP' .or. trim(datamode) == 'SSM_AQUAP') then
           if (my_task == master_task) write(logunit,F00) ' reading ',trim(rest_file)
           call shr_pcdf_readwrite('read',SDOCN%pio_subsystem, SDOCN%io_type, &
                trim(rest_file), mpicom, gsmap=gsmap, rf1=somtp, rf1n='somtp', io_format=SDOCN%io_format)
@@ -374,7 +387,18 @@ CONTAINS
     character(*), parameter :: subName = "(docn_comp_run) "
 
     !-------------------------------------------------------------------------------
-    print *, "Run DOCN"
+
+    !--- XTT variables ---
+    character(1024)       :: x_msg
+    type(mbm_MailboxInfo) :: x_MI
+
+    !--- XTT formats   ---
+    character(*), parameter :: x_F00 = "(a, '.ssm.', a, '.', a)" 
+
+    !-------------------------------------------------------------------------------
+
+
+    print *, "This file is loaded in SourceMod"
     print *, CurrentYMD
     call t_startf('DOCN_RUN')
 
@@ -481,29 +505,25 @@ CONTAINS
           o2x%rAttr(kswp ,n) = swp
        enddo
 
-    case('SOM_SMARTSLAB')
-       lsize = mct_avect_lsize(o2x)
-       do n = 1,SDOCN%nstreams
-          call shr_dmodel_translateAV(SDOCN%avs(n),avstrm,avifld,avofld,rearr)
-       enddo
-       if (firstcall) then
+    case('SSM_AQUAP')
+      print *, "Now we are in SSM_AQUAP case."
+      lsize = mct_avect_lsize(o2x)
+      do n = 1,SDOCN%nstreams
+        call shr_dmodel_translateAV(SDOCN%avs(n),avstrm,avifld,avofld,rearr)
+      enddo
 
+      if (firstcall) then
+        call mbm_setDefault(x_MI)
 
-        ! Start read fifo
-        
+        x_msg = "<<INIT>>"
+        call mbm_send(x_MI, x_msg)
 
-
-        ! setup a connection between julia and foratran. what should i use? nc
-        ! file? or a text file? what should julia know about this? 
-        ! Julia should know the grid configuration here? NO, this should happen
-        ! in case.build stage. So, ideally, the connection is only about passing
-        ! atmospheric data into julia. I believe it is benificial to try making
-        ! a standard in case in the future i need to transplant to other
-        ! language. 
-
-
-        ! information passing during each iteration: dt, wind_stress, solar
-        ! radiation, heat fluxes, 
+        print *, "Msg sent: ", x_msg, ". Now receiving ..."
+        call mbm_recv(x_MI, x_msg)
+        if (mbm_messageCompare(x_msg, "<<READY>>") .neqv. .true.) then
+            print *, "SSM init failed. Recive message: ", x_msg
+            call shr_sys_abort ('SSM init failed.')
+        end if
 
 
           do n = 1,lsize
@@ -513,32 +533,17 @@ CONTAINS
              o2x%rAttr(kt,n) = somtp(n)
              o2x%rAttr(kq,n) = 0.0_R8
           enddo
-       else   ! firstcall
-          tfreeze = shr_frz_freezetemp(o2x%rAttr(ks,:)) + TkFrz
+
+     else
+          print *, "Not first call."
           do n = 1,lsize
-             if (imask(n) /= 0) then
-                !--- pull out h from av for resuse below ---
-                hn = avstrm%rAttr(kh,n)
-                !--- compute new temp ---
-                o2x%rAttr(kt,n) = somtp(n) + &
-                     (x2o%rAttr(kswnet,n) + &  ! shortwave
-                     x2o%rAttr(klwup ,n) + &  ! longwave
-                     x2o%rAttr(klwdn ,n) + &  ! longwave
-                     x2o%rAttr(ksen  ,n) + &  ! sensible
-                     x2o%rAttr(klat  ,n) + &  ! latent
-                     x2o%rAttr(kmelth,n) - &  ! ice melt
-                     avstrm%rAttr(kqbot ,n) - &  ! flux at bottom
-                     (x2o%rAttr(ksnow,n)+x2o%rAttr(krofi,n))*latice) * &  ! latent by prec and roff
-                     dt/(cpsw*rhosw*hn)
-                !--- compute ice formed or melt potential ---
-                o2x%rAttr(kq,n) = (tfreeze(n) - o2x%rAttr(kt,n))*(cpsw*rhosw*hn)/dt  ! ice formed q>0
-                o2x%rAttr(kt,n) = max(tfreeze(n),o2x%rAttr(kt,n))                    ! reset temp
-                somtp(n) = o2x%rAttr(kt,n)                                        ! save temp
-             endif
+             o2x%rAttr(kt,n) = somtp(n)
+             o2x%rAttr(kq,n) = 0.0_R8
           enddo
-       endif   ! firstcall
 
+      endif
 
+      print *, "SSM_AQUAP done."
     case('SOM')
        lsize = mct_avect_lsize(o2x)
        do n = 1,SDOCN%nstreams

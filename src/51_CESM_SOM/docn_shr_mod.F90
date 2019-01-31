@@ -9,6 +9,9 @@ module docn_shr_mod
   use shr_strdata_mod, only : shr_strdata_type, shr_strdata_readnml
   use shr_mpi_mod    , only : shr_mpi_bcast
 
+
+  
+
   ! !PUBLIC TYPES:
   implicit none
   private ! except
@@ -147,7 +150,8 @@ CONTAINS
          trim(datamode) == 'COPYALL'       .or. &
          trim(datamode) == 'IAF'           .or. &
          trim(datamode) == 'SOM'           .or. &
-         trim(datamode) == 'SOM_AQUAP') then
+         trim(datamode) == 'SOM_AQUAP'     .or. &
+         trim(datamode) == 'SSM_AQUAP') then
        if (my_task == master_task) then
           write(logunit,F00) ' docn datamode = ',trim(datamode)
        end if

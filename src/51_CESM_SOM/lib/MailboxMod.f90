@@ -1,7 +1,7 @@
 module MailboxMod
 implicit none
 
-type MailboxInfo
+type mbm_MailboxInfo
     Integer :: recv_cnt
     Integer :: send_cnt
     Integer :: recv_fd
@@ -14,14 +14,14 @@ type MailboxInfo
     character(len = 256) :: lock_fn
 
     character(len = 256) :: log_file
-end type MailboxInfo
+end type
 
 
 contains
 
-subroutine setDefault(MI)
+subroutine mbm_setDefault(MI)
     implicit none
-    type(MailboxInfo) :: MI
+    type(mbm_MailboxInfo) :: MI
 
     MI%recv_fn  = "mymodel2cesm.info"
     MI%send_fn  = "cesm2mymodel.info"
@@ -36,11 +36,11 @@ subroutine setDefault(MI)
     MI%recv_fd = 10
     MI%send_fd = 11
     MI%lock_fd = 12
-end subroutine setDefault
+end subroutine 
 
-subroutine appendPath(MI, path)
+subroutine mbm_appendPath(MI, path)
     implicit none
-    type(MailboxInfo) :: MI
+    type(mbm_MailboxInfo) :: MI
     character(len=256) :: path
 
     MI%recv_fn  = path // "/" // MI%recv_fn 
@@ -48,10 +48,10 @@ subroutine appendPath(MI, path)
     MI%lock_fn  = path // "/" // MI%lock_fn
     MI%log_file = path // "/" // MI%log_file
 
-end subroutine appendPath
+end subroutine 
 
-subroutine obtainLock(MI)
-    type(MailboxInfo) :: MI
+subroutine mbm_obtainLock(MI)
+    type(mbm_MailboxInfo) :: MI
     logical :: file_exists
     integer :: io
 
@@ -79,12 +79,12 @@ subroutine obtainLock(MI)
 
 end subroutine
 
-subroutine releaseLock(MI)
-    type(MailboxInfo) :: MI
-    call delFile(MI%lock_fn, MI%lock_fd)
+subroutine mbm_releaseLock(MI)
+    type(mbm_MailboxInfo) :: MI
+    call mbm_delFile(MI%lock_fn, MI%lock_fd)
 end subroutine
 
-subroutine delFile(fn, fd)
+subroutine mbm_delFile(fn, fd)
     implicit none
     integer :: fd
     character(len=*) :: fn
@@ -93,9 +93,9 @@ subroutine delFile(fn, fd)
     close(unit=fd, status="delete")
 end subroutine
 
-subroutine recv(MI, msg)
+subroutine mbm_recv(MI, msg)
     implicit none
-    type(MailboxInfo)  :: MI
+    type(mbm_MailboxInfo)  :: MI
     character(len=*) :: msg
 
     integer :: io
@@ -110,30 +110,32 @@ subroutine recv(MI, msg)
         end if
     end do
 
-    call obtainLock(MI)
+    call mbm_obtainLock(MI)
     
     io = 0
     open(unit=MI%recv_fd, file=MI%recv_fn, form="formatted", access="stream", action="read", iostat=io)
     
     read (MI%recv_fd, '(A)', iostat=io) msg
     close(MI%recv_fd)
+    
+    msg = trim(msg)
 
-    call delFile(MI%recv_fn, MI%recv_fd)
+    call mbm_delFile(MI%recv_fn, MI%recv_fd)
 
-    call releaseLock(MI)
+    call mbm_releaseLock(MI)
     
 end subroutine
 
 
-subroutine send(MI, msg)
+subroutine mbm_send(MI, msg)
     implicit none
-    type(MailboxInfo)  :: MI
+    type(mbm_MailboxInfo)  :: MI
     character(len=*) :: msg
 
     integer :: io
 
-    call obtainLock(MI)
-    print *, "Lock get" 
+    call mbm_obtainLock(MI)
+    !print *, "Lock get" 
     io = 0
     open(unit=MI%send_fd, file=MI%send_fn, form="formatted", access="stream", action="write", iostat=io)
     if (io /= 0) then
@@ -147,30 +149,40 @@ subroutine send(MI, msg)
     end if
     
     close(MI%send_fd)
-    call releaseLock(MI)
+    call mbm_releaseLock(MI)
 
 end subroutine
 
 
-subroutine hello(MI)
+subroutine mbm_hello(MI)
     implicit none
-    type(MailboxInfo) :: MI
+    type(mbm_MailboxInfo) :: MI
     character(256) :: msg
 
-    call recv(MI, msg)
-    msg = trim(msg)
+    call mbm_recv(MI, msg)
 
-    if ((msg .eq. "<<TEST>>") .or. (len(msg) .eq. len("<<TEST>>"))) then
+    if ((msg .eq. "<<TEST>>") .and. (len(msg) .eq. len("<<TEST>>"))) then
         print *, "Recv hello!"
     else
         print *, len(msg), " : ", len("<<TEST>>")
         print *, "Weird msg: [", msg, "]"
     end if
 
-    call send(MI, "<<TEST>>")
+    call mbm_send(MI, "<<TEST>>")
 
 end subroutine
 
+logical function mbm_messageCompare(msg1, msg2)
+    implicit none
+    character(*) :: msg1, msg2
+
+    if (msg1 .eq. msg2) then
+        mbm_messageCompare = .true.
+    else
+        mbm_messageCompare = .false.
+    end if
+
+end function
 
 
 end module MailboxMod
