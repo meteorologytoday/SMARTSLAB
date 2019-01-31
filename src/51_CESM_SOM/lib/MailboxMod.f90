@@ -19,6 +19,21 @@ end type
 
 contains
 
+integer function mbm_get_file_unit()
+    
+    integer :: lu, iostat
+    logical :: opened
+      
+    do lu = 99, 1,-1
+       inquire (unit=lu, opened=opened, iostat=iostat)
+       if (iostat.ne.0) cycle
+       if (.not.opened) exit
+    end do
+    
+    get_file_unit = lu
+    return
+end function 
+
 subroutine mbm_setDefault(MI)
     implicit none
     type(mbm_MailboxInfo) :: MI
@@ -33,9 +48,9 @@ subroutine mbm_setDefault(MI)
     MI%recv_cnt = 0
     MI%send_cnt = 0
  
-    MI%recv_fd = 10
-    MI%send_fd = 11
-    MI%lock_fd = 12
+    MI%recv_fd = mbm_get_file_unit()
+    MI%send_fd = mbm_get_file_unit()
+    MI%lock_fd = mbm_get_file_unit()
 end subroutine 
 
 subroutine mbm_appendPath(MI, path)
@@ -52,13 +67,15 @@ end subroutine
 
 subroutine mbm_obtainLock(MI)
     type(mbm_MailboxInfo) :: MI
+
+
     logical :: file_exists
     integer :: io
 
     do
-!        print *, "try get lock"
+        ! try to get lock
         inquire(file=MI%lock_fn, exist=file_exists)
-!        print *, "file_exists: ", file_exists
+        
         if (file_exists .eqv. .true.) then
             !call sleep(1)
             cycle
@@ -68,6 +85,7 @@ subroutine mbm_obtainLock(MI)
         open(unit=MI%lock_fd, file=MI%lock_fn, form="formatted", access="stream", action="write", iostat=io)
         close(MI%lock_fd)
 
+        ! If open file fails then try again
         if (io == 0) then
             exit
         else
@@ -75,7 +93,6 @@ subroutine mbm_obtainLock(MI)
             cycle
         end if
     end do 
-!    print *, "Lock got"
 
 end subroutine
 
@@ -133,7 +150,7 @@ subroutine mbm_send(MI, msg)
     character(len=*) :: msg
 
     integer :: io
-
+    
     call mbm_obtainLock(MI)
     !print *, "Lock get" 
     io = 0

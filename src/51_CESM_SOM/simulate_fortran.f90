@@ -1,5 +1,5 @@
 
-include "MailboxMod.f90"
+include "lib/MailboxMod.f90"
 
 
 program exp_FIFO
@@ -8,12 +8,12 @@ use MailboxMod
 
 implicit none
 integer :: i
-type(MailboxInfo) :: MI
+type(mbm_MailboxInfo) :: MI
 character(1024)  :: msg
 
-    call setDefault(MI)
+    call mbm_setDefault(MI)
 
-    call hello(MI)
+    call mbm_hello(MI)
     print *, "Hello finish."
 
     do i = 1, 5
@@ -24,9 +24,9 @@ character(1024)  :: msg
         call sleep(3)
 
         print *, "Send message: ", msg
-        call send(MI, msg)
+        call mbm_send(MI, msg)
         print *, "Receiving message ... "
-        call recv(MI, msg)
+        call mbm_recv(MI, msg)
         
         print *, "Message received: ", trim(msg)
 
@@ -34,7 +34,7 @@ character(1024)  :: msg
 
 
     msg = "<<END>>"
-    call send(MI, msg)
+    call mbm_send(MI, msg)
 
     print *, "Program ends."
 

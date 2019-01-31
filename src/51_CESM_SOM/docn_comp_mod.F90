@@ -91,6 +91,20 @@ module docn_comp_mod
   character(len=*), parameter :: flds_strm = 'strm_h:strm_qbot'
   !--------------------------------------------------------------------------
 
+
+  !--- XTT variables ---
+  character(1024)       :: x_msg, x_fn
+  type(mbm_MailboxInfo) :: x_MI
+  integer :: w_fd, r_fd
+
+  real(R8), pointer     :: hflx(:), swflx(:)
+
+  !--- XTT formats   ---
+  character(*), parameter :: x_F00 = "(a, '.ssm.', a, '.', a)" 
+
+  !-------------------------------------------------------------------------------
+
+
   save
 
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -388,15 +402,6 @@ CONTAINS
 
     !-------------------------------------------------------------------------------
 
-    !--- XTT variables ---
-    character(1024)       :: x_msg
-    type(mbm_MailboxInfo) :: x_MI
-
-    !--- XTT formats   ---
-    character(*), parameter :: x_F00 = "(a, '.ssm.', a, '.', a)" 
-
-    !-------------------------------------------------------------------------------
-
 
     print *, "This file is loaded in SourceMod"
     print *, CurrentYMD
@@ -513,33 +518,63 @@ CONTAINS
       enddo
 
       if (firstcall) then
+
+        ! I put all extra initialization here to avoid complication
+
+        allocate(hflx(lsize))
+        allocate(swflx(lsize))
+
+
+        do n = 1,lsize
+            if (.not. read_restart) then
+                somtp(n) = o2x%rAttr(kt,n) + TkFrz
+            end if
+            o2x%rAttr(kt,n) = somtp(n)
+            o2x%rAttr(kq,n) = 0.0_R8
+        end do
+         
         call mbm_setDefault(x_MI)
 
-        x_msg = "<<INIT>>"
-        call mbm_send(x_MI, x_msg)
 
+        x_fn = "init_sst.bin"
+        x_msg = "MSG:INIT;SST_FILE:"//trim(x_fn)//";"
+        
+        write_1Dfield(fd, fn, somtp, lsize)
+        call mbm_send(x_MI, x_msg)
+        
         print *, "Msg sent: ", x_msg, ". Now receiving ..."
         call mbm_recv(x_MI, x_msg)
-        if (mbm_messageCompare(x_msg, "<<READY>>") .neqv. .true.) then
+        if (mbm_messageCompare(x_msg, "READY") .neqv. .true.) then
             print *, "SSM init failed. Recive message: ", x_msg
             call shr_sys_abort ('SSM init failed.')
         end if
 
+      else
 
-          do n = 1,lsize
-             if (.not. read_restart) then
-                somtp(n) = o2x%rAttr(kt,n) + TkFrz
-             endif
-             o2x%rAttr(kt,n) = somtp(n)
-             o2x%rAttr(kq,n) = 0.0_R8
-          enddo
+        x_msg = "MSG:RUN;"
+        print *, "Not first call."
+        do n = 1,lsize
 
-     else
-          print *, "Not first call."
-          do n = 1,lsize
-             o2x%rAttr(kt,n) = somtp(n)
-             o2x%rAttr(kq,n) = 0.0_R8
-          enddo
+          swflx(n)  = x2o%rAttr(kswnet, n) 
+
+          hflx(n)  = x2o%rAttr(klwup, n)  + &    ! upward longwave
+                     x2o%rAttr(klwdn, n)  + &    ! downward longwave
+                     x2o%rAttr(ksen, n)   + &    ! sensible heat flux
+                     x2o%rAttr(klat, n)   + &    ! latent heat flux
+                     x2o%rAttr(kmelth, n) + &    ! ice melt
+                   ( x2o%rAttr(ksnow,n) + & 
+                     x2o%rAttr(krofi,n) ) * latice * &  ! latent by snow and roff
+                       
+
+        end do
+
+        x_fn = ""
+        x_msg = trim(x_msg)//trim(x_fn)
+        write_1Dfield(fd, )
+
+          o2x%rAttr(kt,n) = somtp(n)
+          o2x%rAttr(kq,n) = 0.0_R8
+
 
       endif
 
@@ -695,6 +730,11 @@ CONTAINS
        write(logunit,F91)
        write(logunit,F00) trim(myModelName),': end of main integration loop'
        write(logunit,F91)
+
+       x_msg = "END"
+       call mbm_send(MI, x_msg)
+
+
     end if
 
     call t_stopf('DOCN_FINAL')
