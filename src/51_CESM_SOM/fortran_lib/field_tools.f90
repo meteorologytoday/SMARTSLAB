@@ -4,13 +4,13 @@ contains
 
 subroutine write_1Dfield(fd, filename, f, nx)
 character(len=*) :: filename
-real(4), intent(in) :: f(nx)
+real(8), intent(in) :: f(nx)
 integer, intent(in):: fd, nx
 integer :: i,eflag
 
 
 open (fd, file=filename, access="DIRECT", status='REPLACE', &
-&       form='UNFORMATTED', recl=4*nx, iostat=eflag)
+&       form='UNFORMATTED', recl=8*nx, iostat=eflag, convert='LITTLE_ENDIAN')
 
 if(eflag .ne. 0) then
     print *, "Writing field error. File name: ", trim(filename)
@@ -22,6 +22,30 @@ close(fd)
 
 if(eflag .ne. 0) then
     print *, "Writing field error. File name: ", trim(filename)
+end if
+
+end subroutine
+
+subroutine read_1Dfield(fd, filename, f, nx)
+character(len=*) :: filename
+real(8), intent(inout) :: f(nx)
+integer, intent(in)    :: fd, nx
+integer :: i, eflag
+
+
+open (fd, file=filename, access="DIRECT", status='OLD', &
+&       form='UNFORMATTED', recl=8*nx, iostat=eflag, convert='LITTLE_ENDIAN')
+
+if(eflag .ne. 0) then
+    print *, "Reading field error. File name: ", trim(filename)
+    print *, "Error number: ", eflag
+end if
+
+read(fd, rec=1) (f(i),i=1,nx,1)
+close(fd)
+
+if(eflag .ne. 0) then
+    print *, "Reading field error. File name: ", trim(filename)
 end if
 
 end subroutine

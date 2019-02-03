@@ -2,8 +2,8 @@
 @PROCESS ALIAS_SIZE(805306368)
 #endif
 
-include "./lib/field_tools.f90"
-include "./lib/MailboxMod.f90"
+include "./fortran_lib/field_tools.f90"
+include "./fortran_lib/MailboxMod.f90"
 
 
 module docn_comp_mod
@@ -93,7 +93,7 @@ module docn_comp_mod
 
 
   !--- XTT variables ---
-  character(1024)       :: x_msg, x_fn
+  character(1024)       :: x_msg, x_fn, calendar_str
   type(mbm_MailboxInfo) :: x_MI
   integer :: w_fd, r_fd
 
@@ -411,6 +411,10 @@ CONTAINS
     call seq_timemgr_EClockGetData( EClock, curr_ymd=CurrentYMD, curr_tod=CurrentTOD)
     call seq_timemgr_EClockGetData( EClock, curr_yr=yy, curr_mon=mm, curr_day=dd)
     call seq_timemgr_EClockGetData( EClock, dtime=idt)
+    
+
+
+
     dt = idt * 1.0_R8
     write_restart = seq_timemgr_RestartAlarmIsOn(EClock)
     call t_stopf('docn_run1')
@@ -512,18 +516,26 @@ CONTAINS
 
     case('SSM_AQUAP')
       print *, "Now we are in SSM_AQUAP case."
+      
+      call seq_timemgr_EClockGetData( EClock, calendar=calendar_str)
+      print *, "# WHAT TIME IS IT? ", trim(calendar_str)
+      
       lsize = mct_avect_lsize(o2x)
       do n = 1,SDOCN%nstreams
         call shr_dmodel_translateAV(SDOCN%avs(n),avstrm,avifld,avofld,rearr)
       enddo
 
+
       if (firstcall) then
 
         ! I put all extra initialization here to avoid complication
 
+        w_fd = mbm_get_file_unit()
+        r_fd = mbm_get_file_unit()
+
+
         allocate(hflx(lsize))
         allocate(swflx(lsize))
-
 
         do n = 1,lsize
             if (.not. read_restart) then
@@ -537,9 +549,9 @@ CONTAINS
 
 
         x_fn = "init_sst.bin"
-        x_msg = "MSG:INIT;SST_FILE:"//trim(x_fn)//";"
+        x_msg = "MSG:INIT;SST:"//trim(x_fn)//";"
         
-        write_1Dfield(fd, fn, somtp, lsize)
+        call write_1Dfield(w_fd, x_fn, somtp, lsize)
         call mbm_send(x_MI, x_msg)
         
         print *, "Msg sent: ", x_msg, ". Now receiving ..."
@@ -563,22 +575,39 @@ CONTAINS
                      x2o%rAttr(klat, n)   + &    ! latent heat flux
                      x2o%rAttr(kmelth, n) + &    ! ice melt
                    ( x2o%rAttr(ksnow,n) + & 
-                     x2o%rAttr(krofi,n) ) * latice * &  ! latent by snow and roff
+                     x2o%rAttr(krofi,n) ) * latice ! latent by snow and roff
                        
 
         end do
 
-        x_fn = ""
-        x_msg = trim(x_msg)//trim(x_fn)
-        write_1Dfield(fd, )
+        x_fn = "HFLX."//trim(calendar_str)//".bin"
+        x_msg = trim(x_msg)//"HFLX:"//trim(x_fn)//";"
+        call write_1Dfield(w_fd, x_fn, hflx, lsize)
+
+        x_fn = "SWFLX."//trim(calendar_str)//".bin"
+        x_msg = trim(x_msg)//"SWFLX:"//trim(x_fn)//";"
+        call write_1Dfield(w_fd, x_fn, swflx, lsize)
+
+        x_msg = trim(x_msg)//"EXPECTED_SST:SST_NEW."//trim(calendar_str)//".bin;"
+        call mbm_send(x_MI, x_msg)
+
+        ! SSM is doing some magical calculation...
+
+        call mbm_recv(x_MI, x_msg)
+        call read_1Dfield(r_fd, trim(x_msg), somtp, lsize)
+ 
+        do n = 1, lsize
+!            o2x%rAttr(kq,n) = (tfreeze(n) - o2x%rAttr(kt,n))*(cpsw*rhosw*hn)/dt  ! ice formed q>0
+!            o2x%rAttr(kt,n) = max(tfreeze(n),o2x%rAttr(kt,n))                    ! reset temp
 
           o2x%rAttr(kt,n) = somtp(n)
           o2x%rAttr(kq,n) = 0.0_R8
-
-
+        end do
+     
       endif
 
       print *, "SSM_AQUAP done."
+
     case('SOM')
        lsize = mct_avect_lsize(o2x)
        do n = 1,SDOCN%nstreams
@@ -732,7 +761,7 @@ CONTAINS
        write(logunit,F91)
 
        x_msg = "END"
-       call mbm_send(MI, x_msg)
+       call mbm_send(x_MI, x_msg)
 
 
     end if

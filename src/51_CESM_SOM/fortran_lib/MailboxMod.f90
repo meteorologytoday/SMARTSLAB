@@ -30,7 +30,7 @@ integer function mbm_get_file_unit()
        if (.not.opened) exit
     end do
     
-    get_file_unit = lu
+    mbm_get_file_unit = lu
     return
 end function 
 

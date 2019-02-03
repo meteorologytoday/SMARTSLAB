@@ -1,19 +1,19 @@
 
-module MailboxMod
+module Mailbox
 
 export MailboxInfo, hello, recv, send
 
 mutable struct MailboxInfo
 
-    recv_fn :: String
-    send_fn :: String
+    recv_fn :: AbstractString
+    send_fn :: AbstractString
 
-    lock_fn :: String
+    lock_fn :: AbstractString
 
     function MailboxInfo(;
-        recv :: String,
-        send :: String,
-        lock :: String,
+        recv :: AbstractString,
+        send :: AbstractString,
+        lock :: AbstractString,
     )
         return new(recv, send, lock)
     end
@@ -24,7 +24,7 @@ mutable struct MailboxInfo
 end
 
 
-function appendPath(MI::MailboxInfo, path::String)
+function appendPath(MI::MailboxInfo, path::AbstractString)
     MI.recv_fn = joinpath(path, MI.recv_fn)
     MI.send_fn = joinpath(path, MI.send_fn)
     MI.lock_fn = joinpath(path, MI.lock_fn)
@@ -69,7 +69,7 @@ function recv(MI::MailboxInfo)
     return result
 end
 
-function send(MI::MailboxInfo, msg::String)
+function send(MI::MailboxInfo, msg::AbstractString)
     lock(MI) do
         open(MI.send_fn, "w") do io
             write(io, msg)
