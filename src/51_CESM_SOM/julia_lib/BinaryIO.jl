@@ -1,18 +1,18 @@
 
 module BinaryIO
 
-function readBinaryField!(
+function readBinary!(
     filename::AbstractString,
     arr::Array{Float64,1},
     buffer::Array{UInt8,1};
     endianess::Symbol=:little_endian
 )
-    local actual_nbread
-
+    local func, need_swap, actual_nbread
 
     if length(arr) * 8 != length(buffer)
         throw(ErrorException("Length of buffer should be exactly 8 times of data array's."))
     end
+
 
     nbread = length(buffer)
     
@@ -23,50 +23,51 @@ function readBinaryField!(
         throw(ErrorException(format("Number of bytes read: {:d} does not equal to {:d}", actual_nbread, nbread)))
     end
 
+    arr[:] = reinterpret(Float64, buffer)
+
     if endianess == :little_endian
-        for i = 1:length(arr)
-            local val
-            ii = (i-1) * 8
-            for j = 1:8
-
-                val = (
-                    (UInt64(buffer[ii + 1]) << 0)  +
-                    (UInt64(buffer[ii + 2]) << 8)  +
-                    (UInt64(buffer[ii + 3]) << 16) +
-                    (UInt64(buffer[ii + 4]) << 24) +
-                    (UInt64(buffer[ii + 5]) << 32) +
-                    (UInt64(buffer[ii + 6]) << 40) +
-                    (UInt64(buffer[ii + 7]) << 48) +
-                    (UInt64(buffer[ii + 8]) << 56)
-                )
-            end
-            arr[i] = reinterpret(Float64, val)
-        end
-
+        func = ltoh
     elseif endianess == :big_endian
-        for i = 1:length(arr)
-            local val
-            ii = (i-1) * 8
-            for j = 1:8
-
-                val = (
-                    (UInt64(buffer[ii + 1]) << 56) +
-                    (UInt64(buffer[ii + 2]) << 48) +
-                    (UInt64(buffer[ii + 3]) << 40) +
-                    (UInt64(buffer[ii + 4]) << 32) +
-                    (UInt64(buffer[ii + 5]) << 24) +
-                    (UInt64(buffer[ii + 6]) << 16) +
-                    (UInt64(buffer[ii + 7]) << 8) +
-                    (UInt64(buffer[ii + 8]) << 0)
-                )
-            end
-            arr[i] = reinterpret(Float64, val)
-        end
+        func = ntoh
     else
-
-        throw(ErrorException("Unknown endianess: " * String(endianess)))
-
+        throw(ErrorException("Unknown symbol: " * String(endianess)))
     end
+
+    arr[:] = func.(arr)
+
+
 end
+
+function writeBinary!(
+    filename::AbstractString,
+    arr::Array{Float64,1},
+    buffer::Array{UInt8,1};
+    endianess::Symbol=:little_endian
+)
+    local func
+
+    if length(arr) * 8 != length(buffer)
+        throw(ErrorException("Length of buffer should be exactly 8 times of data array's."))
+    end
+
+    nbwrite = length(buffer)
+
+    if endianess == :little_endian
+        func = htol
+    elseif endianess == :big_endian
+        func = hton
+    else
+        throw(ErrorException("Unknown symbol: " * String(endianess)))
+    end
+
+    buffer[:] = reinterpret(UInt8, func.(arr))
+    actual_nbwrite = write(filename, buffer)
+
+    if nbwrite != actual_nbwrite 
+        throw(ErrorException(format("Number of bytes write: {:d} does not equal to {:d}", actual_nbwrite, nbwrite)))
+    end
+
+end
+
 
 end
