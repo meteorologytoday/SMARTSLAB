@@ -14,14 +14,22 @@ mutable struct OceanColumn
     function OceanColumn(;
         N      :: Integer,
         zs     :: Array{Float64, 1},
-        bs     :: Array{Float64, 1} ,
+        bs     :: Array{Float64, 1},
         K      :: Float64,
         b_ML   :: Float64,
         h_ML   :: Float64,
-        FLDO   :: Integer
+        FLDO   :: Integer,
+        hs     :: Union{Array{Float64, 1}, Nothing} = nothing,
+        Δzs    :: Union{Array{Float64, 1}, Nothing} = nothing,
     )
-        hs  = zs[1:end-1] - zs[2:end]
-        Δzs = (hs[1:end-1] + hs[2:end]) / 2.0
+
+        if hs == nothing
+            hs  = zs[1:end-1] - zs[2:end]
+        end
+
+        if Δzs == nothing
+            Δzs = (hs[1:end-1] + hs[2:end]) / 2.0
+        end
 
         return new(N, zs, Base.copy(bs), K, b_ML, h_ML, FLDO, hs, Δzs)
     end

@@ -1,24 +1,24 @@
-include("FifoPhoneMod.jl")
+include("MailboxMod.jl")
 
 using Formatting
 using Printf
-using .FifoPhoneMod
+using .MailboxMod
 
 recv_fifo = "cesm2mymodel.fifo"
 send_fifo = "mymodel2cesm.fifo"
 
 
-fp = FifoPhone(recv=recv_fifo, send=send_fifo)
+MI = MailboxInfo()
 
 
-hello(fp)
+hello(MI)
 
 # Mimic
 
 while true
 
     println("Try to recv new msg")
-    msg = recv(fp)
+    msg = recv(MI)
     println("Msg recv: ", msg)
 
     if msg == "<<END>>"
@@ -35,7 +35,7 @@ while true
 
     println("Gonna send SST file back : ", sst_fn)
 
-    send(fp, sst_fn)
+    send(MI, sst_fn)
 
 end
 

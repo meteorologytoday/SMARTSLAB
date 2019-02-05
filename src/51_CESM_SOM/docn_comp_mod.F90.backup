@@ -459,6 +459,12 @@ CONTAINS
     ! Determine data model behavior based on the mode
     !-------------------------------------------------
 
+    lsize = mct_avect_lsize(o2x)
+    do n=1,lsize
+        print *, "n: ", n, "kswnet: ", x2o%rAttr(kswnet, n)
+    enddo
+
+
     call t_startf('docn_datamode')
     select case (trim(datamode))
 
@@ -514,7 +520,7 @@ CONTAINS
           o2x%rAttr(kswp ,n) = swp
        enddo
 
-    case('SOM_AQUAP')
+    case('SSM_AQUAP')
       print *, "Now we are in SSM_AQUAP case."
      
       call shr_cal_ymdtod2string(x_datetime_str, yy, mm, dd, currentTOD)
@@ -551,7 +557,7 @@ CONTAINS
 
         x_fn = "init_sst.bin"
         x_msg = "MSG:INIT;SST:"//trim(x_fn)//";"
-         
+        
         !call write_1Dfield(x_w_fd, x_fn, somtp, lsize)
         call mbm_send(x_MI, x_msg)
         
@@ -598,7 +604,6 @@ CONTAINS
         call write_1Dfield(x_w_fd, x_fn, x_swflx, lsize)
 
         x_msg = trim(x_msg)//"SST_NEW:SST_NEW."//trim(x_datetime_str)//".bin;"
-        write (x_msg, "(A, A, F10.2, A)") trim(x_msg), ";DT:", dt, ";"
         call mbm_send(x_MI, x_msg)
 
         ! SSM is doing some magical calculation...
@@ -656,7 +661,7 @@ CONTAINS
           enddo
        endif   ! firstcall
 
-    case('XSOM_AQUAP')
+    case('SOM_AQUAP')
        lsize = mct_avect_lsize(o2x)
        do n = 1,SDOCN%nstreams
           call shr_dmodel_translateAV(SDOCN%avs(n),avstrm,avifld,avofld,rearr)

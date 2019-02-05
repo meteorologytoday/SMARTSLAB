@@ -1,6 +1,8 @@
 
 module BinaryIO
 
+export readBinary!, writeBinary!
+
 function readBinary!(
     filename::AbstractString,
     arr::Array{Float64,1},
