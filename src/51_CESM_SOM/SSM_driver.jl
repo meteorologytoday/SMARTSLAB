@@ -1,13 +1,6 @@
+include("SSM_config.jl")
 
-include("/home/tienyiah/projects/SMARTSLAB/src/22_dev_MLMML/SSM.jl")
-include("julia_lib/Mailbox.jl")
-include("julia_lib/BinaryIO.jl")
-
-using Formatting
-using Printf
-using .Mailbox
-using .BinaryIO
-using .SSM
+using Statistics: std, mean
 
 function parseMsg(msg::AbstractString)
     pairs = split(msg, ";")
@@ -27,9 +20,6 @@ function parseMsg(msg::AbstractString)
 end
 
 
-println("Initializing SSM")
-
-include("SSM_config.jl")
 
 
 if isdir(wdir)
@@ -38,14 +28,15 @@ else
     throw(ErrorException("Working directory [ " * wdir * " ] does not exist."))
 end
 
+println("Initializing SSM")
 
-lsize = nlon * nlat
+
 stage = :INIT
 MI = MailboxInfo()
 
-
 include("init_ocean.jl")
 
+ncio = NetCDFIO.MapInfo(domain_file)
 buffer2d  = zeros(UInt8, lsize * 8)
 sst       = zeros(Float64, lsize)
 hflx      = zeros(Float64, lsize)
@@ -84,7 +75,7 @@ function reshape_1to2!(fr::Array{Float64, 1}, to::Array{Float64, 2})
 
 end
 
-using Statistics
+
 
 println("Ready to work")
 while true
