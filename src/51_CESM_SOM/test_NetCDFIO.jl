@@ -23,8 +23,6 @@ for i = 1:20
 end
 
 
-#sst = rand(size(mi.xc)..., 1) * 0.0
-#NetCDFIO.write2NCFile(mi, output_file, "sst", sst)
 
 
 

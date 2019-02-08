@@ -1,6 +1,5 @@
 include("SSM_config.jl")
 
-using Statistics: std, mean
 
 function parseMsg(msg::AbstractString)
     pairs = split(msg, ";")
@@ -20,83 +19,70 @@ function parseMsg(msg::AbstractString)
 end
 
 
-
-
 if isdir(wdir)
     cd(wdir)
 else
     throw(ErrorException("Working directory [ " * wdir * " ] does not exist."))
 end
 
-println("Initializing SSM")
+println("===== INITIALIZING SSM =====")
 
 
 stage = :INIT
-MI = MailboxInfo()
+mail = MailboxInfo()
+map = NetCDFIO.MapInfo{Float64}(domain_file)
 
 include("init_ocean.jl")
 
-ncio = NetCDFIO.MapInfo(domain_file)
-buffer2d  = zeros(UInt8, lsize * 8)
-sst       = zeros(Float64, lsize)
-hflx      = zeros(Float64, lsize)
-swflx     = zeros(Float64, lsize)
-u = sst * 0.0
-v = sst * 0.0
+ncio = NetCDFIO.MapInfo{Float64}(domain_file)
+buffer2d  = zeros(UInt8, map.lsize * 8)
+sst       = zeros(Float64, map.lsize)
+mld       = copy(sst)
+hflx      = copy(sst)
+swflx     = copy(sst)
+taux      = copy(sst)
+tauy      = copy(sst)
+qflux2atm = copy(sst)
 
-function reshape_2to1!(fr::Array{Float64, 2}, to::Array{Float64, 1})
-    
-    if size(fr) != (nlon, nlat)
-        throw(ErrorException("Dimension does not match"))
-    end
+output_counter = 0 
+output_filename = ""
+println("===== SSM IS READY =====")
 
-    if length(to) != lsize
-        throw(ErrorException("Dimension does not match"))
-    end
-
-    for j=1:nlat
-        to[1+(j-1)*nlon:j*nlon] = fr[:, j]
-    end
-end
-
-function reshape_1to2!(fr::Array{Float64, 1}, to::Array{Float64, 2})
-
-    if size(to) != (nlon, nlat)
-        throw(ErrorException("Dimension does not match"))
-    end
-
-    if length(fr) != lsize
-        throw(ErrorException("Dimension does not match"))
-    end
-
-    for j=1:nlat
-        to[:, j] = fr[1+(j-1)*nlon:j*nlon]
-    end
-
-end
-
-
-
-println("Ready to work")
 while true
 
-    global stage
+    global stage, output_counter, output_filename
 
-    println("Try to recv new msg")
-    msg = parseMsg(recv(MI))
-    println("Msg recv: ", msg)
+
+    if output_counter % output_record_length == 0
+        output_filename = format("SSM_output_{:03d}.nc", convert(Integer, floor(output_counter / output_record_length)))
+        
+        NetCDFIO.createNCFile(map, output_filename)
+    end
+
+    println(format("# Output Counter : {:d}", output_counter))
+    println(format("# Stage          : {}", String(stage)))
+
+    msg = parseMsg(recv(mail))
+    println("==== MESSAGE RECEIVED ====")
+    print(json(msg, 4))
+    println("==========================")
 
     if stage == :INIT && msg["MSG"] == "INIT"
 
         SSM.getSST!(occ=occ, sst=sst)
         writeBinary!(msg["SST"], sst, buffer2d; endianess=:little_endian)
-        send(MI, msg["SST"])
+        send(mail, msg["SST"])
+
+        NetCDFIO.write2NCFile(map, output_filename, "sst", reshape(sst, map.nx, map.ny))
+        output_counter += 1
 
         stage = :RUN
-
+        
     elseif stage == :RUN && msg["MSG"] == "RUN"
-        readBinary!(msg["HFLX"],   hflx, buffer2d; endianess=:little_endian)
-        readBinary!(msg["SWFLX"], swflx, buffer2d; endianess=:little_endian)
+        readBinary!(msg["HFLX"],   hflx, buffer2d; endianess=:little_endian, delete=false)
+        readBinary!(msg["SWFLX"], swflx, buffer2d; endianess=:little_endian, delete=false)
+        readBinary!(msg["TAUX"],   taux, buffer2d; endianess=:little_endian, delete=false)
+        readBinary!(msg["TAUY"],   tauy, buffer2d; endianess=:little_endian, delete=false)
 
         hflx  .*= -1.0
         swflx .*= -1.0
@@ -114,23 +100,23 @@ while true
         )
 
  
-        SSM.getSST!(occ=occ, sst=sst)
-        writeBinary!(msg["SST_NEW"], sst, buffer2d; endianess=:little_endian)
+        SSM.getInfo!(occ=occ, sst=sst, mld=mld)
 
-        send(MI, msg["SST_NEW"])
+        writeBinary!(msg["SST_NEW"], sst, buffer2d; endianess=:little_endian)
+        send(mail, msg["SST_NEW"])
+
+        NetCDFIO.write2NCFile(map, output_filename, "sst", reshape(sst, map.nx, map.ny))
+        output_counter += 1
+
 
     elseif stage == :RUN && msg["MSG"] == "END"
 
         println("Simulation ends peacefully.")
-        send(MI, "END")
+        send(mail, "END")
         break
     else
-        
-        send(MI, "CRASH")
-        throw(ErrorException("Unknown status: stage " * stage * ", MSG: " * msg["MSG"]))
+        send(mail, "CRASH")
+        throw(ErrorException("Unknown status: stage " * stage * ", MSG: " * String(msg["MSG"])))
     end
 
 end
-
-
-

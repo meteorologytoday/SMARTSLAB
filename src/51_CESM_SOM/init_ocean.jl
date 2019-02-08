@@ -15,7 +15,7 @@ tmp_oc = MLMML.makeSimpleOceanColumn(;
 
 
 occ = SSM.OceanColumnCollection(
-    N_ocs = lsize,
+    N_ocs = map.lsize,
     N     = length(zs)-1,
     zs    = zs,
     bs    = tmp_oc.bs,

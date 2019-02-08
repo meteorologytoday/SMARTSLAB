@@ -16,7 +16,8 @@ function stepOceanColumnCollection!(;
     v     :: Array{Float64, 1},
     hflx  :: Array{Float64, 1},
     swflx :: Array{Float64, 1},
-    Δt    :: Float64
+    Δt    :: Float64,
+
 )
 
     ua   = (u.^2 + v.^2).^0.5
@@ -24,6 +25,7 @@ function stepOceanColumnCollection!(;
     swflx *= (MLMML.α * MLMML.g / MLMML.ρ / MLMML.c_p)
     
     for l = 1:occ.N_ocs
+        
         MLMML.stepOceanColumn!(
             oc = occ.ocs[l],
             ua = ua[l],
@@ -42,6 +44,26 @@ function getSST!(;
 )
     for l = 1:occ.N_ocs
       sst[l] = occ.ocs[l].b_ML / (MLMML.α * MLMML.g)
+    end
+end
+
+function getInfo!(;
+    occ   :: OceanColumnCollection,
+    sst   :: Union{Array{Float64}, Nothing} = nothing,
+    mld   :: Union{Array{Float64}, Nothing} = nothing,
+)
+    if mld != nothing
+        for l = 1:occ.N_ocs
+          mld[l] = occ.ocs[l].h_ML
+        end
+    end
+
+    if sst != nothing
+
+        for l = 1:occ.N_ocs
+          sst[l] = occ.ocs[l].b_ML / (MLMML.α * MLMML.g)
+        end
+
     end
 end
 

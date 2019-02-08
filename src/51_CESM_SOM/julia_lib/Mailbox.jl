@@ -39,7 +39,7 @@ end
 
 function obtainLock(MI::MailboxInfo)
     while isfile(MI.lock_fn)
-        #sleep(1)
+        sleep(1)
     end
 
     open(MI.lock_fn, "w") do io
@@ -55,7 +55,7 @@ function recv(MI::MailboxInfo)
     local result
 
     while !isfile(MI.recv_fn)
-        #sleep(1)
+        sleep(1)
     end
 
     lock(MI) do

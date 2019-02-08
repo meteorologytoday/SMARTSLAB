@@ -93,11 +93,14 @@ module docn_comp_mod
 
 
   !--- XTT variables ---
+
+  integer(IN)   :: ktaux, ktauy  ! field indices
+ 
   character(1024)       :: x_msg, x_fn, x_datetime_str
   type(mbm_MailboxInfo) :: x_MI
   integer :: x_w_fd, x_r_fd, x_curr_ymd
 
-  real(R8), pointer     :: x_hflx(:), x_swflx(:)
+  real(R8), pointer     :: x_hflx(:), x_swflx(:), x_taux(:), x_tauy(:)
 
   !--- XTT formats   ---
   character(*), parameter :: x_F00 = "(a, '.ssm.', a, '.', a)" 
@@ -269,7 +272,7 @@ CONTAINS
     kmelth = mct_aVect_indexRA(x2o,'Fioi_melth')
     ksnow  = mct_aVect_indexRA(x2o,'Faxa_snow')
     krofi  = mct_aVect_indexRA(x2o,'Foxx_rofi')
-
+    
     call mct_aVect_init(avstrm, rList=flds_strm, lsize=lsize)
     call mct_aVect_zero(avstrm)
 
@@ -403,8 +406,6 @@ CONTAINS
     !-------------------------------------------------------------------------------
 
 
-    print *, "This file is loaded in SourceMod"
-    print *, CurrentYMD
     call t_startf('DOCN_RUN')
 
     call t_startf('docn_run1')
@@ -514,8 +515,9 @@ CONTAINS
           o2x%rAttr(kswp ,n) = swp
        enddo
 
-    case('SOM_AQUAP')
-      print *, "Now we are in SSM_AQUAP case."
+    case('SOM_AQUAP' : 'SOM')
+
+      print *, "XTT modified code."
      
       call shr_cal_ymdtod2string(x_datetime_str, yy, mm, dd, currentTOD)
  
@@ -535,8 +537,14 @@ CONTAINS
         x_r_fd = mbm_get_file_unit()
 
 
+        ktaux  = mct_aVect_indexRA(x2o,'Faox_taux')
+        ktauy  = mct_aVect_indexRA(x2o,'Faox_tauy')
+
+
         allocate(x_hflx(lsize))
         allocate(x_swflx(lsize))
+        allocate(x_taux(lsize))
+        allocate(x_tauy(lsize))
 
         do n = 1,lsize
             if (.not. read_restart) then
@@ -547,7 +555,7 @@ CONTAINS
         end do
          
         call mbm_setDefault(x_MI)
-
+        call mbm_clean(x_MI)
 
         x_fn = "init_sst.bin"
         x_msg = "MSG:INIT;SST:"//trim(x_fn)//";"
@@ -563,6 +571,7 @@ CONTAINS
         end if
         
         call read_1Dfield(x_r_fd, trim(x_fn), somtp, lsize)
+        call mbm_delFile(trim(x_fn), x_r_fd)
 
         do n = 1, lsize
           o2x%rAttr(kt,n) = somtp(n)
@@ -589,15 +598,25 @@ CONTAINS
         end do
         print *, "Max of short wave: ", maxval(x_swflx)
 
-        x_fn = "HFLX."//trim(x_datetime_str)//".bin"
+        x_fn = "HFLX.bin"
         x_msg = trim(x_msg)//"HFLX:"//trim(x_fn)//";"
         call write_1Dfield(x_w_fd, x_fn, x_hflx, lsize)
 
-        x_fn = "SWFLX."//trim(x_datetime_str)//".bin"
+        x_fn = "SWFLX.bin"
         x_msg = trim(x_msg)//"SWFLX:"//trim(x_fn)//";"
         call write_1Dfield(x_w_fd, x_fn, x_swflx, lsize)
 
-        x_msg = trim(x_msg)//"SST_NEW:SST_NEW."//trim(x_datetime_str)//".bin;"
+        x_fn = "TAUX.bin"
+        x_msg = trim(x_msg)//"TAUX:"//trim(x_fn)//";"
+        call write_1Dfield(x_w_fd, x_fn, x_taux, lsize)
+
+        x_fn = "TAUY.bin"
+        x_msg = trim(x_msg)//"TAUY:"//trim(x_fn)//";"
+        call write_1Dfield(x_w_fd, x_fn, x_tauy, lsize)
+
+
+
+        x_msg = trim(x_msg)//"SST_NEW:SST_NEW.bin;"
         write (x_msg, "(A, A, F10.2, A)") trim(x_msg), ";DT:", dt, ";"
         call mbm_send(x_MI, x_msg)
 
@@ -605,6 +624,7 @@ CONTAINS
 
         call mbm_recv(x_MI, x_msg)
         call read_1Dfield(x_r_fd, trim(x_msg), somtp, lsize)
+        call mbm_delFile(trim(x_msg), x_r_fd)
  
         do n = 1, lsize
 !            o2x%rAttr(kq,n) = (tfreeze(n) - o2x%rAttr(kt,n))*(cpsw*rhosw*hn)/dt  ! ice formed q>0

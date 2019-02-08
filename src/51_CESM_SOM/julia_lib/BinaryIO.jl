@@ -7,7 +7,8 @@ function readBinary!(
     filename::AbstractString,
     arr::Array{Float64,1},
     buffer::Array{UInt8,1};
-    endianess::Symbol=:little_endian
+    endianess::Symbol=:little_endian,
+    delete::Bool=false
 )
     local func, need_swap, actual_nbread
 
@@ -37,7 +38,9 @@ function readBinary!(
 
     arr[:] = func.(arr)
 
-
+    if delete
+        rm(filename, force=true)
+    end
 end
 
 function writeBinary!(

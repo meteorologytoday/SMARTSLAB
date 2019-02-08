@@ -77,7 +77,7 @@ subroutine mbm_obtainLock(MI)
         inquire(file=MI%lock_fn, exist=file_exists)
         
         if (file_exists .eqv. .true.) then
-            !call sleep(1)
+            call sleep(1)
             cycle
         end if
         
@@ -89,7 +89,7 @@ subroutine mbm_obtainLock(MI)
         if (io == 0) then
             exit
         else
-            !call sleep(1)
+            call sleep(1)
             cycle
         end if
     end do 
@@ -105,10 +105,25 @@ subroutine mbm_delFile(fn, fd)
     implicit none
     integer :: fd
     character(len=*) :: fn
-    
-    open(unit=fd, file=fn, status="old")
-    close(unit=fd, status="delete")
+    logical :: file_exists
+
+    inquire(file=fn, exist=file_exists)
+
+    if (file_exists .eqv. .true.) then
+        open(unit=fd, file=fn, status="old")
+        close(unit=fd, status="delete")
+    end if
+
 end subroutine
+
+subroutine mbm_clean(MI)
+    implicit none
+    type(mbm_MailboxInfo) :: MI
+
+    call mbm_delFile(MI%recv_fn, MI%recv_fd)
+    call mbm_delFile(MI%send_fn, MI%send_fd)
+end subroutine
+
 
 subroutine mbm_recv(MI, msg)
     implicit none
@@ -123,6 +138,7 @@ subroutine mbm_recv(MI, msg)
         if (file_exists .eqv. .true.) then
             exit
         else
+            call sleep(1)
             cycle
         end if
     end do
