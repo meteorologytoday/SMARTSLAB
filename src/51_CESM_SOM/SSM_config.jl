@@ -12,15 +12,10 @@ using .SSM
 using .NetCDFIO
 using Statistics: std, mean
 
+caseroot = "/home/tienyiah/projects/cesm1_test/CICE_f45"
+wdir     = "/home/tienyiah/cesm1/scratch/CICE_f45/run"
 
-# 10 deg
-domain_file = "/home/tienyiah/projects/cesm2_test/inputdata/share/domains/domain.ocn.fv10x15_gx3v7.180321.nc"
-
-# 2 deg
-#domain_file = "~/projects/cesm2_test/inputdata/share/domains/domain.ocn.1.9x2.5_gx1v6_090403.nc"
-
-wdir = "/home/tienyiah/cesm/scratch/SOM_AQUAP_CICE/run"
-
+domain_file = "/home/tienyiah/cesm_inputdata/cesm1/share/domains/domain.ocn.gx3v7.120323.nc"
 zs = collect(Float64, range(0, -500, step=-5))
 K = 1e-5
 

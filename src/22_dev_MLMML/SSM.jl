@@ -25,7 +25,11 @@ function stepOceanColumnCollection!(;
     swflx *= (MLMML.α * MLMML.g / MLMML.ρ / MLMML.c_p)
     
     for l = 1:occ.N_ocs
-        
+
+        if occ.mask[l] == 0.0
+            continue
+        end        
+
         MLMML.stepOceanColumn!(
             oc = occ.ocs[l],
             ua = ua[l],
@@ -38,15 +42,6 @@ function stepOceanColumnCollection!(;
 end
 
 
-function getSST!(;
-    occ   :: OceanColumnCollection,
-    sst   :: Array{Float64, 1}
-)
-    for l = 1:occ.N_ocs
-      sst[l] = occ.ocs[l].b_ML / (MLMML.α * MLMML.g)
-    end
-end
-
 function getInfo!(;
     occ   :: OceanColumnCollection,
     sst   :: Union{Array{Float64}, Nothing} = nothing,
@@ -54,7 +49,8 @@ function getInfo!(;
 )
     if mld != nothing
         for l = 1:occ.N_ocs
-          mld[l] = occ.ocs[l].h_ML
+            mld[l] = occ.ocs[l].h_ML
+            mld[ occ.mask_idx ] .= missing
         end
     end
 
@@ -62,6 +58,7 @@ function getInfo!(;
 
         for l = 1:occ.N_ocs
           sst[l] = occ.ocs[l].b_ML / (MLMML.α * MLMML.g)
+          sst[ occ.mask_idx ] .= missing
         end
 
     end

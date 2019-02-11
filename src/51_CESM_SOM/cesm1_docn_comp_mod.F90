@@ -679,9 +679,10 @@ subroutine docn_comp_run( EClock, cdata,  x2o, o2x)
         x_w_fd = mbm_get_file_unit()
         x_r_fd = mbm_get_file_unit()
 
-
-        ktaux  = mct_aVect_indexRA(x2o,'Faox_taux')
-        ktauy  = mct_aVect_indexRA(x2o,'Faox_tauy')
+        ! variable name are refereced from
+        ! $CESM1_root/models/drv/shr/seq_flds_mod.F90 (line 1101)
+        ktaux  = mct_aVect_indexRA(x2o,'Foxx_taux')
+        ktauy  = mct_aVect_indexRA(x2o,'Foxx_tauy')
 
 
         allocate(x_hflx(lsize))
@@ -695,6 +696,11 @@ subroutine docn_comp_run( EClock, cdata,  x2o, o2x)
             end if
             o2x%rAttr(kt,n) = somtp(n)
             o2x%rAttr(kq,n) = 0.0_R8
+
+            x_hflx(n)  = 0.0_R8
+            x_swflx(n) = 0.0_R8
+            x_taux(n)  = 0.0_R8
+            x_tauy(n)  = 0.0_R8
         end do
          
         call mbm_setDefault(x_MI)
@@ -726,18 +732,19 @@ subroutine docn_comp_run( EClock, cdata,  x2o, o2x)
         print *, "Not first call."
 
         do n = 1,lsize
+          if (imask(n) /= 0) then
+            x_swflx(n)  = x2o%rAttr(kswnet, n) 
 
-          x_swflx(n)  = x2o%rAttr(kswnet, n) 
 
-          x_hflx(n)   = x2o%rAttr(klwup, n)  + &    ! upward longwave
-                        x2o%rAttr(klwdn, n)  + &    ! downward longwave
-                        x2o%rAttr(ksen, n)   + &    ! sensible heat flux
-                        x2o%rAttr(klat, n)   + &    ! latent heat flux
-                        x2o%rAttr(kmelth, n) + &    ! ice melt
-                      ( x2o%rAttr(ksnow,n) + & 
-                        x2o%rAttr(kioff,n) ) * latice ! latent by snow and roff
+            x_hflx(n)   = x2o%rAttr(klwup, n)  + &    ! upward longwave
+                          x2o%rAttr(klwdn, n)  + &    ! downward longwave
+                          x2o%rAttr(ksen, n)   + &    ! sensible heat flux
+                          x2o%rAttr(klat, n)   + &    ! latent heat flux
+                          x2o%rAttr(kmelth, n) + &    ! ice melt
+                        ( x2o%rAttr(ksnow,n) + & 
+                          x2o%rAttr(kioff,n) ) * latice ! latent by snow and roff
                        
-
+          end if
         end do
         print *, "Max of short wave: ", maxval(x_swflx)
 

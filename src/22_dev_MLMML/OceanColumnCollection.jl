@@ -1,10 +1,11 @@
 
 mutable struct OceanColumnCollection
-    N_ocs  :: Integer           # Number of columns
-    N      :: Integer           # Number of layers
-    zs     :: Array{Float64, 1} # Position of (N+1) grid points
-    K      :: Float64           # Diffusion coes
-    mask   :: Array{Float64}
+    N_ocs    :: Integer           # Number of columns
+    N        :: Integer           # Number of layers
+    zs       :: Array{Float64, 1} # Position of (N+1) grid points
+    K        :: Float64           # Diffusion coes
+    mask     :: Array{Float64}
+    mask_idx :: Any
 
     # Derived quantities
     hs     :: Array{Float64, 1} # Thickness of layers
@@ -33,6 +34,7 @@ mutable struct OceanColumnCollection
             mask .+= 1.0
         end
 
+        mask_idx = (mask .== 0.0)
         ocs = Array{MLMML.OceanColumn}(undef, N_ocs)
 
         for i=1:N_ocs
@@ -54,7 +56,7 @@ mutable struct OceanColumnCollection
             )
         end 
 
-        return new(N_ocs, N, zs, K, mask, hs, Δzs, ocs)
+        return new(N_ocs, N, zs, K, mask, mask_idx, hs, Δzs, ocs)
     end
 
 end

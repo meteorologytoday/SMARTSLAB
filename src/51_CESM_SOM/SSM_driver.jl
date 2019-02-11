@@ -44,6 +44,8 @@ taux      = copy(sst)
 tauy      = copy(sst)
 qflux2atm = copy(sst)
 
+sumflx      = copy(sst)
+
 output_counter = 0 
 output_filename = ""
 println("===== SSM IS READY =====")
@@ -74,6 +76,7 @@ while true
         send(mail, msg["SST"])
 
         NetCDFIO.write2NCFile(map, output_filename, "sst", reshape(sst, map.nx, map.ny))
+        #NetCDFIO.write2NCFile(map, output_filename, "sumflx", reshape(sumflx, map.nx, map.ny))
         output_counter += 1
 
         stage = :RUN
@@ -86,14 +89,15 @@ while true
 
         hflx  .*= -1.0
         swflx .*= -1.0
+        sumflx .= hflx + swflx
         
         println("Do complicated, magical calculations...")
         #println("Avg(swflx) = ", mean(swflx), "; std: ", std(swflx))
         #println("Avg(hflx) = ", mean(hflx), "; std: ", std(hflx))
         SSM.stepOceanColumnCollection!(
             occ   = occ,
-            u     = u,
-            v     = v,
+            u     = taux,
+            v     = tauy,
             hflx  = hflx,
             swflx = swflx,
             Δt    = parse(Float64, msg["DT"])
@@ -106,6 +110,7 @@ while true
         send(mail, msg["SST_NEW"])
 
         NetCDFIO.write2NCFile(map, output_filename, "sst", reshape(sst, map.nx, map.ny))
+        #NetCDFIO.write2NCFile(map, output_filename, "sumflx", reshape(sumflx, map.nx, map.ny))
         output_counter += 1
 
 
