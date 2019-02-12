@@ -14,12 +14,16 @@ mi = NetCDFIO.MapInfo{Float64}(domain_file)
 NetCDFIO.createNCFile(mi, output_file)
 
 
-sst = rand(size(mi.xc)..., 100) * 50
-NetCDFIO.write2NCFile(mi, output_file, "sst", sst)
+sst = rand(size(mi.xc)..., 10) * 50
+mld = rand(size(mi.xc)..., 10) * 50
 
-for i = 1:20
-    sst = rand(size(mi.xc)...) * 50 .+ 100
-    NetCDFIO.write2NCFile(mi, output_file, "sst", sst)
+#NetCDFIO.write2NCFile(mi, output_file, "sst", sst)
+
+for i = 1:300
+    sst = rand(size(mi.xc)...) * 3 .+ i
+    mld = rand(size(mi.xc)...) * 3 .+ i^2
+    NetCDFIO.write2NCFile(mi, output_file, "sst", sst; time=i)
+    NetCDFIO.write2NCFile(mi, output_file, "mld", mld; time=i)
 end
 
 

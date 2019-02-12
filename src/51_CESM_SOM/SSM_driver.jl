@@ -46,23 +46,30 @@ qflux2atm = copy(sst)
 
 sumflx      = copy(sst)
 
-output_counter = 0 
+# Mask data
+SSM.maskData!(occ, sst)
+SSM.maskData!(occ, mld)
+
+
+println("###########", occ.N_ocs)
+println("###########", sum(occ.mask))
+time_i = 1 
 output_filename = ""
 println("===== SSM IS READY =====")
 
 while true
 
-    global stage, output_counter, output_filename
+    global stage, time_i, output_filename
 
 
-    if output_counter % output_record_length == 0
-        output_filename = format("SSM_output_{:03d}.nc", convert(Integer, floor(output_counter / output_record_length)))
+    if (time_i-1) % output_record_length == 0
+        output_filename = format("SSM_output_{:03d}.nc", convert(Integer, 1+floor((time_i-1) / output_record_length)))
         
         NetCDFIO.createNCFile(map, output_filename)
     end
 
-    println(format("# Output Counter : {:d}", output_counter))
-    println(format("# Stage          : {}", String(stage)))
+    println(format("# Time counter : {:d}", time_i))
+    println(format("# Stage        : {}", String(stage)))
 
     msg = parseMsg(recv(mail))
     println("==== MESSAGE RECEIVED ====")
@@ -71,13 +78,15 @@ while true
 
     if stage == :INIT && msg["MSG"] == "INIT"
 
-        SSM.getSST!(occ=occ, sst=sst)
+        SSM.getInfo!(occ=occ, sst=sst, mld=mld)
         writeBinary!(msg["SST"], sst, buffer2d; endianess=:little_endian)
         send(mail, msg["SST"])
 
-        NetCDFIO.write2NCFile(map, output_filename, "sst", reshape(sst, map.nx, map.ny))
-        #NetCDFIO.write2NCFile(map, output_filename, "sumflx", reshape(sumflx, map.nx, map.ny))
-        output_counter += 1
+        SSM.maskData!(occ, sst)
+        NetCDFIO.write2NCFile(map, output_filename, "sst", reshape(sst, map.nx, map.ny); time=time_i, missing_value=map.missing_value)
+        NetCDFIO.write2NCFile(map, output_filename, "sumflx", reshape(sumflx, map.nx, map.ny); time=time_i, missing_value=map.missing_value)
+        NetCDFIO.write2NCFile(map, output_filename, "mld", reshape(mld, map.nx, map.ny); time=time_i, missing_value=map.missing_value)
+        time_i += 1
 
         stage = :RUN
         
@@ -90,10 +99,10 @@ while true
         hflx  .*= -1.0
         swflx .*= -1.0
         sumflx .= hflx + swflx
+        SSM.maskData!(occ, sumflx)
         
         println("Do complicated, magical calculations...")
-        #println("Avg(swflx) = ", mean(swflx), "; std: ", std(swflx))
-        #println("Avg(hflx) = ", mean(hflx), "; std: ", std(hflx))
+        
         SSM.stepOceanColumnCollection!(
             occ   = occ,
             u     = taux,
@@ -109,9 +118,11 @@ while true
         writeBinary!(msg["SST_NEW"], sst, buffer2d; endianess=:little_endian)
         send(mail, msg["SST_NEW"])
 
-        NetCDFIO.write2NCFile(map, output_filename, "sst", reshape(sst, map.nx, map.ny))
-        #NetCDFIO.write2NCFile(map, output_filename, "sumflx", reshape(sumflx, map.nx, map.ny))
-        output_counter += 1
+        SSM.maskData!(occ, sst)
+        NetCDFIO.write2NCFile(map, output_filename, "sst", reshape(sst, map.nx, map.ny); time=time_i)
+        NetCDFIO.write2NCFile(map, output_filename, "sumflx", reshape(sumflx, map.nx, map.ny); time=time_i)
+        NetCDFIO.write2NCFile(map, output_filename, "mld", reshape(mld, map.nx, map.ny); time=time_i)
+        time_i += 1
 
 
     elseif stage == :RUN && msg["MSG"] == "END"

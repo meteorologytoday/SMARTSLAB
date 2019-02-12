@@ -8,6 +8,9 @@ using Printf
 using Formatting
 using ..MLMML
 
+missing_value = 1e20
+
+
 include("OceanColumnCollection.jl")
 
 function stepOceanColumnCollection!(;
@@ -41,6 +44,13 @@ function stepOceanColumnCollection!(;
 
 end
 
+function maskData!(occ::OceanColumnCollection, arr::Array{Float64})
+    for i = 1:occ.N_ocs
+        if occ.mask[i] == 0.0
+            arr[i] = missing_value
+        end
+    end
+end
 
 function getInfo!(;
     occ   :: OceanColumnCollection,
@@ -49,16 +59,21 @@ function getInfo!(;
 )
     if mld != nothing
         for l = 1:occ.N_ocs
+            if occ.mask[l] == 0.0
+                continue
+            end
             mld[l] = occ.ocs[l].h_ML
-            mld[ occ.mask_idx ] .= missing
         end
     end
 
     if sst != nothing
 
         for l = 1:occ.N_ocs
+
+          if occ.mask[l] == 0.0
+              continue
+          end
           sst[l] = occ.ocs[l].b_ML / (MLMML.α * MLMML.g)
-          sst[ occ.mask_idx ] .= missing
         end
 
     end

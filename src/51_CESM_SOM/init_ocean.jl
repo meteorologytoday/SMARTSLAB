@@ -23,6 +23,7 @@ occ = SSM.OceanColumnCollection(
     b_ML  = tmp_oc.b_ML,
     h_ML  = tmp_oc.h_ML,
     FLDO  = tmp_oc.FLDO,
+    mask  = map.mask
 )
 
 
