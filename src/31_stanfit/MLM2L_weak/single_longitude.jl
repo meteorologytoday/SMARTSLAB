@@ -6,33 +6,20 @@ using Formatting
 using NCDatasets
 import Statistics: mean, std
 
-
 if length(ARGS) != 1 
     throw(ErrorException("Length of ARGS must be 1. That is the longitude index."))
 end
 
-target_i = parse(Int, ARGS[1])
-
-#=
-total_pts = nlat * nlon
-max_pts_per_task = 100
-tasks = ceil(Integer, total_pts/max_pts_per_task)
-
-println("Total pts: ", total_pts)
-println("max_pts_per_task: ", max_pts_per_task)
-println("tasks: ", tasks)
-=#
-
-
+lon_i = parse(Int, ARGS[1])
 
 # construct tmp folder
-tmp_dir = joinpath(main_dir, "stan_tmp", format("{:03d}", target_i))
+tmp_dir = joinpath(main_dir, "stan_tmp", format("{:03d}", lon_i))
 mkpath(tmp_dir)
 
-filename = format("{:03d}.jld", target_i)
+filename = format("{:03d}.jld", lon_i)
 filename = joinpath(main_dir, filename)
 
-println(format("This program is going to fit {}/{} ", target_i, nlon))
+println("This program is going to fit lon[", lon_i, "] = ", lon[lon_i])
 if isfile(filename)
     println("File ", filename, " already exists. End program.")
     exit()
@@ -43,7 +30,7 @@ println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
 using Stan
 @printf("done\n")
 
-script_path = normpath(joinpath(dirname(@__FILE__), "..", "..", "STAN_code", "forecast", "MLM2L_strong.stan"))
+script_path = normpath(joinpath(dirname(@__FILE__), "..", "..", "STAN_code", "forecast", "MLM2L_weak.stan"))
 model_script = read(script_path, String)
 stanmodel = Stanmodel(
     name="STAN",
@@ -64,31 +51,27 @@ time_stat = Dict()
 
 total_time = 0.0
 
-β_mean = zeros(Float64, nlat, 24)
-β_std = zeros(Float64, nlat, 24)
+β_mean = zeros(dtype, length(lat), 24)
+β_std = zeros(dtype, length(lat), 24)
 
 β_mean .= NaN
 β_std  .= NaN
 
-Dataset(F_filename, "r") do ds
-    global F = convert(Array{Float64}, nomissing(ds["SHF"][target_i, :, :], NaN))
-end
+crop_range = (lon_i, :, :)
+θ      = readModelVar("tos", crop_range) * (ρ * c_p)
+F      = readModelVar("hfds", crop_range)
 
-Dataset(SST_filename, "r") do ds
-    global θ = convert(Array{Float64}, nomissing(ds["SST"][target_i, :, 1, :], NaN)) * ρ * c_p
-end
+init_h = zeros(dtype, 12) .+ 30.0
 
-init_h = zeros(Float64, 12) .+ 30.0
+N = size(θ)[2]
 
-N  = size(θ)[2]
-Δt = 365 * 86400.0 / 12.0
-for j = 1:nlat
-    
+for j = 1:length(lat)
+
     if isnan(θ[j, 1]) # skip land
         continue
     end
 
-    println(format("(lat, lon) = ({:d} / {:d}, {:d} / {:d})", j, nlat, target_i, nlon))
+    writelog(lon_i, "[lat_i = {:03d}] Doing lat[{:d}] = {:.2f}", j, lon_i, j, lat[j] )
 
     beg_time = Base.time()
     data = Dict(
@@ -147,8 +130,7 @@ for j = 1:nlat
     time_stat = Base.time() - beg_time
 
     global total_time += time_stat
-    println(format("(lat, lon) = ({:d} / {:d}, {:d} / {:d})", j, nlat, target_i, nlon))
-    println(format("Stan fit: {:.2f} min. Total time: {:.2f} min. ", time_stat / 60.0, total_time / 60.0 ))
+    writelog(lon_i, "[lat_i = {:03d}] Stan fit: {:.2f} min. Total time: {:.2f} min. ", j, time_stat / 60.0, total_time / 60.0 )
 
 end
 
@@ -162,7 +144,7 @@ program_end_time = Base.time()
 
 @printf("Total time used: %.2f min for %d points, with nchains = %d, num_samples = %d\n",
     (program_end_time-program_beg_time)/ 60.0,
-    nlat,
+    length(lat),
     nchains,
     num_samples
 )
