@@ -13,7 +13,6 @@ end
 
 target_i = parse(Int, ARGS[1])
 
-#=
 total_pts = nlat * nlon
 max_pts_per_task = 100
 tasks = ceil(Integer, total_pts/max_pts_per_task)
@@ -21,7 +20,6 @@ tasks = ceil(Integer, total_pts/max_pts_per_task)
 println("Total pts: ", total_pts)
 println("max_pts_per_task: ", max_pts_per_task)
 println("tasks: ", tasks)
-=#
 
 
 
@@ -43,8 +41,7 @@ println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
 using Stan
 @printf("done\n")
 
-#script_path = normpath(joinpath(dirname(@__FILE__), "..", "..", "STAN_code", "forecast", "MLM2L_strong.stan"))
-script_path = normpath(joinpath(dirname(@__FILE__), "..", "..", "STAN_code", "forecast", "MLM2L_weak.stan"))
+script_path = normpath(joinpath(dirname(@__FILE__), "..", "..", "STAN_code", "forecast", "MLM2L_strong.stan"))
 model_script = read(script_path, String)
 stanmodel = Stanmodel(
     name="STAN",
@@ -88,6 +85,10 @@ println(isnan.(θ[:, 1]))
 for j = 1:nlat
    
      
+    if j == 5
+        break
+    end
+    
     if isnan(θ[j, 1]) # skip land
         continue
     end
@@ -158,8 +159,13 @@ end
 
 using JLD
 
+println(β_mean[4,  1:12])
+
+println(sum(isfinite.(β_mean)))
+
 println("Output filename: ", filename)
 save(filename, Dict("β_mean" => β_mean, "β_std" => β_std))
+
 
 program_end_time = Base.time()
 
