@@ -72,16 +72,16 @@ total_time = 0.0
 β_std  .= NaN
 
 Dataset(F_filename, "r") do ds
-    global F = convert(Array{Float64}, nomissing(ds["SHF"][target_i, :, :], NaN))
+    global F = convert(Array{Float64}, nomissing(ds["hfds"][target_i, :, :], NaN))
 end
 
 Dataset(SST_filename, "r") do ds
-    global θ = convert(Array{Float64}, nomissing(ds["SST"][target_i, :, 1, :], NaN)) * ρ * c_p
+    global θ = convert(Array{Float64}, nomissing(ds["tos"][target_i, :, :], NaN)) * ρ * c_p
 end
 
 init_h = zeros(Float64, 12) .+ 30.0
 
-N  = size(θ)[2]
+N  = size(F)[end]
 Δt = 365 * 86400.0 / 12.0
 
 println(isnan.(θ[:, 1]))
