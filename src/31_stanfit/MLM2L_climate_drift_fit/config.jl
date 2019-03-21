@@ -19,16 +19,14 @@ num_warmup  = 50
 
 ρ    = 1027.0  # kg / m^3
 c_p  = 3985.0  # J / kg / K
-
-
 θd   = 273.15 * ρ * c_p
 σ_θ  = 1.0 * ρ * c_p
-σ_θ_trend  = 1.0 * ρ * c_p / 86400.0 / 365
+σ_θ_trend  = 1.0 * ρ * c_p / 365.0 / 86400.0
 
-max_pts_per_task = 100.0
+sub_output_size = 10
 
 
-model_name = "NCAR_LENS_f09_g16"
+model_name = "NCAR_LENS_g37"
 exp_name = format("stanfit_MLM2L_weak_{}_c{:d}_s{:d}_w{:d}", model_name, nchains, num_samples, num_warmup)
 
 main_dir = joinpath(data_path, exp_name)
