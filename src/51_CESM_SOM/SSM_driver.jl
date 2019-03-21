@@ -46,23 +46,33 @@ qflux2atm = copy(sst)
 
 sumflx      = copy(sst)
 
+output_vars = Dict(
+    "mld"       => reshape(mld,       map.nx, map.ny),
+    "sst"       => reshape(sst,       map.nx, map.ny),
+    "sumflx"    => reshape(sumflx,    map.nx, map.ny),
+    "qflux2atm" => reshape(qflux2atm, map.nx, map.ny),
+)
+
+
 # Mask data
 SSM.maskData!(occ, sst)
 SSM.maskData!(occ, mld)
+SSM.maskData!(occ, qflux2atm)
 
-
-println("###########", occ.N_ocs)
-println("###########", sum(occ.mask))
 time_i = 1 
+wrap_time = i -> ((time_i-1) % output_record_length) + 1
 output_filename = ""
 println("===== SSM IS READY =====")
 
+beg_time = Base.time()
 while true
 
     global stage, time_i, output_filename
 
+    end_time = Base.time()
 
-    if (time_i-1) % output_record_length == 0
+    println(format("Execution time: {:d}", floor(end_time - beg_time)))
+    if wrap_time(time_i) == 1
         output_filename = format("SSM_output_{:03d}.nc", convert(Integer, 1+floor((time_i-1) / output_record_length)))
         
         NetCDFIO.createNCFile(map, output_filename)
@@ -82,10 +92,12 @@ while true
         writeBinary!(msg["SST"], sst, buffer2d; endianess=:little_endian)
         send(mail, msg["SST"])
 
-        SSM.maskData!(occ, sst)
-        NetCDFIO.write2NCFile(map, output_filename, "sst", reshape(sst, map.nx, map.ny); time=time_i, missing_value=map.missing_value)
-        NetCDFIO.write2NCFile(map, output_filename, "sumflx", reshape(sumflx, map.nx, map.ny); time=time_i, missing_value=map.missing_value)
-        NetCDFIO.write2NCFile(map, output_filename, "mld", reshape(mld, map.nx, map.ny); time=time_i, missing_value=map.missing_value)
+        NetCDFIO.write2NCFile(
+            map, output_filename, output_vars;
+            time=wrap_time(time_i),
+            missing_value=map.missing_value
+        )
+
         time_i += 1
 
         stage = :RUN
@@ -118,12 +130,9 @@ while true
         writeBinary!(msg["SST_NEW"], sst, buffer2d; endianess=:little_endian)
         send(mail, msg["SST_NEW"])
 
-        SSM.maskData!(occ, sst)
-        NetCDFIO.write2NCFile(map, output_filename, "sst", reshape(sst, map.nx, map.ny); time=time_i)
-        NetCDFIO.write2NCFile(map, output_filename, "sumflx", reshape(sumflx, map.nx, map.ny); time=time_i)
-        NetCDFIO.write2NCFile(map, output_filename, "mld", reshape(mld, map.nx, map.ny); time=time_i)
+        NetCDFIO.write2NCFile(map, output_filename, output_vars; time=wrap_time(time_i), missing_value=map.missing_value)
+        
         time_i += 1
-
 
     elseif stage == :RUN && msg["MSG"] == "END"
 
@@ -136,3 +145,5 @@ while true
     end
 
 end
+
+

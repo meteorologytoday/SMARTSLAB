@@ -67,6 +67,31 @@ function createNCFile(
 
 end
 
+
+"""
+    This function serves as multiple variable appending
+"""
+function write2NCFile(
+    mi          :: MapInfo{T},
+    filename    :: String,
+    vars        :: Dict;
+    time        :: Union{Nothing, UnitRange, Integer} = nothing,
+    time_exists :: Bool = true,
+    missing_value :: Union{T, Nothing} = nothing,
+) where T <: float
+
+    for (varname, var) in vars
+        println("varname: ", varname)
+        write2NCFile(
+            mi, filename, varname, var;
+            time=time,
+            time_exists=time_exists,
+            missing_value=missing_value
+        )
+    end
+end
+
+
 function write2NCFile(
     mi          :: MapInfo{T},
     filename    :: String,
@@ -78,9 +103,12 @@ function write2NCFile(
 ) where T <: float
 
     local ds_var
+
     ds = Dataset(filename, "a")
 
+    # Create variable if it is not in the file yet
     if ! ( varname in keys(ds) )
+
         ds_var = defVar(ds, varname, T, (time_exists) ? ("ni", "nj", "time") : ("ni", "nj") )
         
         if missing_value != nothing
@@ -90,7 +118,9 @@ function write2NCFile(
         ds_var = ds[varname]
     end
 
+
     if time_exists
+        # Append data if time axis exists
 
         # If this is a static 2d data, then
         # make the third dimension as time
@@ -124,10 +154,10 @@ function write2NCFile(
         end
 
     else
+        # Simply dump data if time axis does not exist
+        # such as coordinate information lat, lon... etc.
         ds_var[:] = var
     end
-
-
     
     close(ds)
 end

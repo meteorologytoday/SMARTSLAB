@@ -1,10 +1,11 @@
 include("../MLMML.jl")
-include("../../lib/LinearRegression.jl")
+include("../../../lib/LinearRegression.jl")
 
 using Printf
 using Statistics: mean
 using .MLMML
 using Formatting
+using StatsBase
 
 @printf("Importing PyPlot... ")
 using PyCall
@@ -35,8 +36,8 @@ MONS_PER_YEAR= 12
 DAYS_PER_YEAR = DAYS_PER_MON * MONS_PER_YEAR
 SECS_PER_YEAR = DAYS_PER_YEAR * SECS_PER_DAY
 
-SPINUP_YEARS = 1000
-YEARS_WANTED = 500
+SPINUP_YEARS = 10
+YEARS_WANTED = 50
 TOTAL_YEARS = SPINUP_YEARS + YEARS_WANTED
 
 TOTAL_DAYS = TOTAL_YEARS * DAYS_PER_YEAR
@@ -84,7 +85,7 @@ convadj_rec = copy(h_rec)
 bs_rec = zeros(Float64, length(oc.bs), DAYS_WANTED)
 
 for k = 1:length(t_sim)
-    println("iteration = ", k)
+    println("iteration = ", k, "/", length(t_sim))
     if k != 1
         info = MLMML.stepOceanColumn!(
             oc=oc,
@@ -172,7 +173,7 @@ T_trends = trends * b2T
 
 
 
-auto_SST = autocor(SST_rec, collect(0:1200); demean=true) 
+auto_SST = autocor(SST_rec, collect(0:120); demean=true) 
 auto_SST_yr = collect(Float64, 0:length(auto_SST)-1) / 12.0
 
 plt[:figure]()

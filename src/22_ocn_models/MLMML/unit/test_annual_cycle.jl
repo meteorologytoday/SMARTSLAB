@@ -1,5 +1,5 @@
 include("../MLMML.jl")
-include("../../lib/LinearRegression.jl")
+include("../../../lib/LinearRegression.jl")
 using Printf
 using Statistics: mean
 using .MLMML
@@ -10,7 +10,7 @@ using PyCall
 using PyPlot
 @pyimport matplotlib.gridspec as GS
 @printf("done.\n")
-#=
+
 D  = 2000.0
 N  = 2001
 zs = collect(Float64, range(0.0, stop=-D, length=N))
@@ -48,7 +48,7 @@ oc = MLMML.makeSimpleOceanColumn(
     zs      = zs,
     b_slope = b_slope,
     b_ML    = b_ML_init,
-    h       = h_init,
+    h_ML    = h_init,
     Δb      = Δb_init,
     K       = 1e-5
 )
@@ -69,7 +69,7 @@ bs_rec = zeros(Float64, length(oc.bs), length(t))
 
 bs_rec[:, 1] = oc.bs
 for k = 1:length(t)-1
-    println("iteration = ", k)
+    println("iteration = ", k, "/", length(t)-1)
     #println("oc.h = ", oc.h)
     info = MLMML.stepOceanColumn!(
         oc=oc,
@@ -78,7 +78,7 @@ for k = 1:length(t)-1
         J0=J[k],
         Δt=Δt,
     )
-    push!(h_rec, oc.h)
+    push!(h_rec, oc.h_ML)
     push!(b_rec, oc.b_ML)
     push!(Δb_rec, info[:Δb])
     push!(hb_rec, MLMML.getIntegratedBuoyancy(oc))
@@ -95,7 +95,7 @@ for i=1:length(oc.bs)
     
 
 end
-=#
+
 #=
 # Line plot figure
 plt[:figure]()
@@ -154,11 +154,11 @@ ax1[:set_ylabel]("Insolation Flux [\$\\mathrm{m}^{2}\\, \\mathrm{s}^{-3}\$]")
 ax2[:set_ylabel]("Z [m]")
 ax2[:set_xlabel]("Time [year]")
 
-xticks      = collect(range(0.0, step=PERIOD, stop=TOTAL_TIME))/86400.0
+xticks      = collect(range(0.0, step=PERIOD_TIME, stop=TOTAL_TIME))/86400.0
 xticklabels = [format("{:d}", i-1) for i=1:length(xticks)]
 
-ax1[:set_xticks](collect(range(0.0, step=PERIOD, stop=TOTAL_TIME))/86400.0)  
-ax2[:set_xticks](collect(range(0.0, step=PERIOD, stop=TOTAL_TIME))/86400.0)
+ax1[:set_xticks](collect(range(0.0, step=PERIOD_TIME, stop=TOTAL_TIME))/86400.0)  
+ax2[:set_xticks](collect(range(0.0, step=PERIOD_TIME, stop=TOTAL_TIME))/86400.0)
 
 ax1[:set_xticklabels](xticklabels)
 ax2[:set_xticklabels](xticklabels)
