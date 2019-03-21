@@ -26,7 +26,7 @@ c_p  = 3985.0  # J / kg / K
 sub_output_size = 10
 
 
-model_name = "NCAR_LENS_g37"
+model_name = "NCAR_LENS_g37_climate_drift"
 exp_name = format("stanfit_MLM2L_weak_{}_c{:d}_s{:d}_w{:d}", model_name, nchains, num_samples, num_warmup)
 
 main_dir = joinpath(data_path, exp_name)

@@ -20,11 +20,11 @@ mkpath(tmp_dir)
 
 sub_output_N = ceil(Integer, nlat / sub_output_size)
 output_filenames = [
-    joinpath(main_dir, format("{:03d}_{:03d}.jld", target_i, j)) for j = 1:sub_output_N
+    normpath(joinpath(main_dir, format("{:03d}_{:03d}.jld", target_i, i))) for i = 1:sub_output_N
 ]
 
 file_exists = [
-    isfile(output_filenames[i]) for j = 1:length(output_filenames)
+    isfile(output_filenames[i]) for i = 1:length(output_filenames)
 ]
 
 println(format("This program is going to fit {}/{} ", target_i, nlon))
@@ -33,15 +33,17 @@ if all(file_exists)
     println("Files are all present, so nothing more to do. End program now.")
     exit()
 else
-
+    println("Some files are missing, means we have work to do!")
+end
 
 println("ENV[\"CMDSTAN_HOME\"] = ", ENV["CMDSTAN_HOME"])
 @printf("Importing Stan library...")
 using Stan
 @printf("done\n")
 
-script_path = normpath(joinpath(dirname(@__FILE__), "..", "..", "STAN_code", "forecast", "MLM2L_climate_drift.stan"))
+script_path = normpath(joinpath(dirname(@__FILE__), "..", "..", "STAN_code", "MLM2L_climate_drift.stan"))
 model_script = read(script_path, String)
+
 stanmodel = Stanmodel(
     name="STAN",
     nchains=nchains,
@@ -88,11 +90,16 @@ for i = 1:sub_output_N
     β_mean .= NaN
     β_std  .= NaN
 
+    β_mean .= i
+    β_std  .= i
+
+    lat_rng = 1 + sub_output_size * (i-1) : min(sub_output_size * i, nlat)
+
     filename = output_filenames[i]
 
-    for j = 1 + sub_output_size * (i-1) : sub_output_size * i
+    for j = lat_rng
 
- 
+        continue 
         
         println(format("Doing (lat, lon) = ({:d} / {:d}, {:d} / {:d})", j, nlat, target_i, nlon))
 
@@ -167,7 +174,13 @@ for i = 1:sub_output_N
 
     using JLD
     println("# Output filename: ", filename)
-    save(filename, Dict("β_mean" => β_mean, "β_std" => β_std))
+    save(
+        filename,
+        Dict(
+            "β_mean" => β_mean[1:length(lat_rng), :],
+            "β_std"  =>  β_std[1:length(lat_rng), :],
+        )
+    )
 
 end
 
