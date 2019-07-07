@@ -4,8 +4,6 @@ using NCDatasets
 
 include("config.jl")
 
-target_file = "single_longitude.jl"
-
 println("We are merging output of exp: ", exp_name)
 
 missing_value = 1e20
@@ -20,16 +18,37 @@ end
 β_mean .= NaN
 β_std  .= NaN
 
+sub_output_N = ceil(Integer, nlat / sub_output_size)
+
 for i = 1:nlon
-    filename = normpath(joinpath(main_dir, format("{:03d}.jld", i)))
-    if isfile(filename)
-        println("Doing file: ", filename)
-        d = JLD.load(filename)
-        β_mean[i, :, :] = d["β_mean"][:, :]
-        β_std[i, :, :]  = d["β_std"][:, :]
-    else
-        println("File: ", filename, " does not exist. Skip this one.")
+
+    output_filenames = [
+
+    ]
+
+    for j = 1:sub_output_N
+
+        filename = normpath(
+            joinpath(
+                main_dir,
+                format("{:03d}_{:03d}.jld", i, j)
+            )
+        )
+        
+        if isfile(filename)
+            println("Doing file: ", filename)
+            d = JLD.load(filename)
+            
+            rng = 1 + sub_output_size * (j-1) : min(sub_output_size * j, nlat)
+            println(rng)
+            β_mean[i, rng, :] = d["β_mean"][:, :]
+            β_std[i, rng, :]  = d["β_std"][:, :]
+        else
+            println("File: ", filename, " does not exist. Skip this one.")
+        end
+
     end
+
 end
 
 nan2missing!(β_mean)
